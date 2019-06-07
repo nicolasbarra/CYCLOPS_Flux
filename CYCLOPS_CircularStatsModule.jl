@@ -1,6 +1,6 @@
 module CYCLOPS_CircularStatsModule
 
-using MultivariateStats, StatsBase
+using StatsBase, MultivariateStats
 
 export Circular_Mean, Fischer_Circular_CorrelationMeasures, Jammalamadka_Circular_CorrelationMeasures, Circular_Error, Circular_Error_List
 
