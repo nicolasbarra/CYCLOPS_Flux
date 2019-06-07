@@ -2,6 +2,8 @@ module CYCLOPS_CircularStatsModule
 
 using MultivariateStats, StatsBase
 
+export Circular_Mean, Fischer_Circular_CorrelationMeasures, Jammalamadka_Circular_CorrelationMeasures, Circular_Error, Circular_Error_List
+
 function Circular_Mean(phases::Array{Number, 1})
   sinterm = sum(sin.(phases))
   costerm = sum(cos.(phases))
