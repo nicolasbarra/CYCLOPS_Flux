@@ -8,7 +8,7 @@ function Circular_Mean(phases::Array{Number, 1})
   sinterm = sum(sin.(phases))
   costerm = sum(cos.(phases))
 
-  atan2(sinterm, costerm) #TODO: fix this
+  atan(sinterm, costerm)
 end
 
 function Fischer_Circular_Correlations(rphases, sphases)
@@ -80,7 +80,7 @@ end
 function Circular_Rank_Phases(rphases)
 	num = length(rphases)
 	rphases = mod.(rphases+2*pi,2*pi)
-	rranks = tiedrank(rphases) #TODO: fix this
+	rranks = tiedrank(rphases)
 	rrankphases = rranks*2*pi / num
 
 	rrankphases
