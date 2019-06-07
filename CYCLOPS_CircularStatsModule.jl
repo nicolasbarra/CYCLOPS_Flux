@@ -156,4 +156,4 @@ function Circular_Error_List(true_list, estimate_list)
 	error_list
 end
 
-end
+end # CYCLOPS_CircularStatsModule
