@@ -1,7 +1,6 @@
 module CYCLOPS_FluxAutoEncoderModule_multi
 
-using Flux
-using CSV
+using Flux, CSV
 import Random
 
 # circular activation function
@@ -20,10 +19,10 @@ MaxSeeds = 10000
 # seed Random Number Generator for reproducible results
 Random.seed!(12345)
 
-fullnonseed_data = read("Annotated_Unlogged_BA11Data.csv")
+fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
 
 alldata_probes = fullnonseed_data[4:end, 1]
-#alldata_symbols = fullnonseed_data[4:end, 2]
+alldata_symbols = fullnonseed_data[4:end, 2]
 
 alldata_times = fullnonseed_data[3, 4:end]
 alldata_subjects = fullnonseed_data[2, 4:end]
