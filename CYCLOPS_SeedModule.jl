@@ -1,5 +1,7 @@
 module CYCLOPS_SeedModule
 
+using Statistics
+
 export clean_data!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
 
 function clean_data!(data::Array{Float64, 2}, bluntpercent)
@@ -151,7 +153,7 @@ function getseed_homologuesymbol_brain(data::Array{Any, 2}, symbol_list, maxcv, 
 	data_data = clean_data!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
-	gene_means = mean(data_data, 2)
+	gene_means = mean(data_data, dims=2)
 	gene_sds = std(data_data, 2)
 	gene_cvs = gene_sds ./ gene_means
 
