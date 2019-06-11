@@ -1,5 +1,7 @@
 module CYCLOPS_SeedModule
 
+export clean_data!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
+
 function clean_data!(data::Array{Float64, 2}, bluntpercent)
 	ngenes, nsamples = size(data)
 	nfloor = Int(1 + floor((1 - bluntpercent) * nsamples))
