@@ -154,7 +154,7 @@ function getseed_homologuesymbol_brain(data::Array{Any, 2}, symbol_list, maxcv, 
 	ngenes, namples = size(data_data)
 
 	gene_means = mean(data_data, dims=2)
-	gene_sds = std(data_data, 2)
+	gene_sds = Statistics.std(data_data; corrected=true, mean=nothing, 2)
 	gene_cvs = gene_sds ./ gene_means
 
 	criteria1 = findin(data_symbols, symbol_list)
