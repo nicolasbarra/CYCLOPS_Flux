@@ -1,4 +1,4 @@
-module Cyclops_SeedModule
+module CYCLOPS_SeedModule
 
 function clean_data!(data::Array{Float64, 2}, bluntpercent)
 	ngenes, nsamples = size(data)
@@ -165,4 +165,4 @@ function getseed_homologuesymbol_brain(data::Array{Any, 2}, symbol_list, maxcv, 
 	seed_symbols, seed_data
 end
 
-end  # module Cyclops_SeedModule
+end  # module CYCLOPS_SeedModule
