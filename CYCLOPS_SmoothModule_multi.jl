@@ -4,6 +4,8 @@ module CYCLOPS_SmoothModule_multi
 
 using Distributed, StatsBase, MultivariateStats
 
+export backgroundmetrics_global_eigen, multicore_backgroundmetrics_global_eigen, multicore_backgroundstatistics_global_eigen, smoothness_measures, circ_diff, circ_diff_phases
+
 function circ_diff(data::Array{Float64, 2})
     circd = hcat(diff(data, 2), data[:, 1] - data[:, end])
 
