@@ -1,11 +1,34 @@
-module CYCLOPS_FluxAutoEncoderModule_multi
-
-using Flux, CSV, Statistics
+using Flux, CSV, Statistics, Distributed
 import Random
+
+@everywhere basedir = homedir()
+@everywhere cd(basedir * "/github/CYCLOPS_Flux")
+@everywhere include("CYCLOPS_CircularStatsModule.jl")
+@everywhere include("CYCLOPS_PrePostProcessModule.jl")
+@everywhere include("CYCLOPS_SeedModule.jl")
+@everywhere include("CYCLOPS_SmoothModule_multi.jl")
 
 # circular activation function
 function circ(z::Float64,zstar::Float64)
   z/(sqrt(z^2+zstar^2))
+end
+
+# make all the columns (beginning at inputted column number) of a the alldata_data DataFrame of type Float64, not String since they are Numbers
+function makefloat!(x, df)
+    for col in x:size(df)[2]
+        if typeof(df[:, col]) == Array{String,1}
+            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
+        end
+    end
+end
+
+# make all the columns (beginning at inputted column number) of the fullnonseed_data DataFrame of type Float64, not String since they are Numbers
+function makefloatfull!(x, df)
+    for col in x:size(df)[2]
+        if typeof(df[:, col]) != Array{Float64,1}
+            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
+        end
+    end
 end
 
 seed_homologues1 = CSV.read("Human_UbiquityCyclers.csv")
@@ -20,6 +43,7 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
+makefloatfull!(4, fullnonseed_data)
 
 alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[4:end, 2]
@@ -30,16 +54,7 @@ alldata_samples = fullnonseed_data[1, 4:end]
 
 alldata_data = fullnonseed_data[4:end, 4:end]
 
-# make all the columns of type Float64, not String since they are Numbers
-function makefloat!(df)
-    for col in 1:size(alldata_data)[2]
-        if typeof(alldata_data[:, col]) == Array{String,1}
-            alldata_data[:, col] = map(x -> tryparse(Float64, x), alldata_data[:, col])
-        end
-    end
-end
-
-makefloat!(alldata_data)
+makefloat!(1, alldata_data)
 
 alldata_data = convert(Matrix, alldata_data)
 
@@ -62,9 +77,20 @@ timestamped_samples = setdiff(1:n_samples, findnotime(alldata_times))
 cutrank = n_probes-MaxSeeds
 
 Seed_MinMean = (sort(vec(mean(alldata_data, dims=2))))[cutrank]
-println(Seed_MinMean) # Note that this number is slightly different in new version versus old (42.889112582772285 here versus 42.88460199555892 in the old file) this is likely due to the fact that my method removes null values better (maybe?))
+println(Seed_MinMean)  # Note that this number is slightly different in new version versus old (42.889112582772285 here versus 42.88460199555892 in the old file) this is likely due to the fact that my method removes null values better (maybe?))
+
+# convert to array from DataFrame for use in functions
+fullnonseed_data_array = convert(Matrix, fullnonseed_data)
 
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
+seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data_array, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
+#seed_data1 = dispersion!(seed_data1)
+#outs1, norm_seed_data1 = GetEigenGenes(seed_data1, Frac_Var, DFrac_Var, 30)
+
+#= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
+
+
+
 
 #=
 #encoder = Dense(outs1, 2, x -> x)
@@ -76,4 +102,3 @@ bottleneck = Dense(2, 2, circ)
 loss(x) = mse(model(x), x)
 
 =#
-end
