@@ -79,7 +79,7 @@ n_probes = length(alldata_probes)
 
 timestamped_samples = setdiff(1:n_samples, findnotime(alldata_times))
 
-cutrank = n_probes-MaxSeeds
+cutrank = n_probes - MaxSeeds
 
 Seed_MinMean = (sort(vec(mean(alldata_data, dims=2))))[cutrank]
 println(Seed_MinMean)  # Note that this number is slightly different in new version versus old (42.889112582772285 here versus 42.88460199555892 in the old file) this is likely due to the fact that my method removes null values better (maybe?))
