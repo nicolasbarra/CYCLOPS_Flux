@@ -10,7 +10,7 @@ import Random
 
 # circular activation function
 function circ(z::Float64,zstar::Float64)
-  z/(sqrt(z^2+zstar^2))
+    z/(sqrt(z^2+zstar^2))
 end
 
 # make all the columns (beginning at inputted column number) of a the alldata_data DataFrame of type Float64, not String since they are Numbers
@@ -48,7 +48,7 @@ N_best = 10  # Number of random initial conditions to try for each optimization
 total_background_num = 10  # Number of background runs for global background refrence distribution (bootstrap). For real runs, this should be much higher.
 
 seed_homologues1 = CSV.read("Human_UbiquityCyclers.csv")
-homologue_symbol_list1=seed_homologues1[2:end,2]
+homologue_symbol_list1 = seed_homologues1[1:end,2]
 
 Seed_MinCV = 0.14
 Seed_MaxCV = .7
