@@ -32,10 +32,10 @@ function getseed(data::Array{Any, 2}, symbol_list, maxcv, mincv, minmean, blunt)
 	gene_sds = std(data_data,2)
 	gene_cvs = gene_sds ./ gene_means
 
-	criteria1 = findin(data_symbols, symbol_list)
-	criteria2 = findin((gene_means .> minmean), true)
-	criteria3 = findin((gene_cvs .> mincv), true)
-	criteria4 = findin((gene_cvs .< maxcv), true)
+	criteria1 = findall(data_symbols, symbol_list)
+	criteria2 = findall((gene_means .> minmean), true)
+	criteria3 = findall((gene_cvs .> mincv), true)
+	criteria4 = findall((gene_cvs .< maxcv), true)
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria,:]
@@ -57,10 +57,10 @@ function getseed_mca(data::Array{Any, 2}, probe_list, maxcv, mincv, minmean, blu
 	gene_sds = std(data_data, 2)
 	gene_cvs = gene_sds ./ gene_means
 
-	criteria1 = findin(data_probes, probe_list)
-	criteria2 = findin((gene_means .> minmean), true)
-	criteria3 = findin((gene_cvs .> mincv), true)
-	criteria4 = findin((gene_cvs .< maxcv), true)
+	criteria1 = findall(data_probes, probe_list)
+	criteria2 = findall((gene_means .> minmean), true)
+	criteria3 = findall((gene_cvs .> mincv), true)
+	criteria4 = findall((gene_cvs .< maxcv), true)
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria, :]
@@ -82,10 +82,10 @@ function getseed_homologuesymbol(data::Array{Any, 2}, symbol_list, maxcv, mincv,
 	gene_sds = std(data_data,2)
 	gene_cvs = gene_sds ./ gene_means
 
-	criteria1 = findin(data_symbols, symbol_list)
-	criteria2 = findin((gene_means .> minmean), true)
-	criteria3 = findin((gene_cvs .> mincv), true)
-	criteria4 = findin((gene_cvs .< maxcv), true)
+	criteria1 = findall(data_symbols, symbol_list)
+	criteria2 = findall((gene_means .> minmean), true)
+	criteria3 = findall((gene_cvs .> mincv), true)
+	criteria4 = findall((gene_cvs .< maxcv), true)
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria, :]
@@ -107,10 +107,10 @@ function getseed_homologueprobe(data::Array{Any, 2}, probe_list, maxcv, mincv, m
 	gene_sds = std(data_data, 2)
 	gene_cvs = gene_sds ./ gene_means
 
-	criteria1 = findin(data_probes, probe_list)
-	criteria2 = findin((gene_means .> minmean), true)
-	criteria3 = findin((gene_cvs .> mincv), true)
-	criteria4 = findin((gene_cvs .< maxcv), true)
+	criteria1 = findall(data_probes, probe_list)
+	criteria2 = findall((gene_means .> minmean), true)
+	criteria3 = findall((gene_cvs .> mincv), true)
+	criteria4 = findall((gene_cvs .< maxcv), true)
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria, :]
@@ -157,10 +157,10 @@ function getseed_homologuesymbol_brain(data::Array{Any, 2}, symbol_list, maxcv, 
 	gene_sds = Statistics.std(data_data; dims=2)
 	gene_cvs = gene_sds ./ gene_means
 
-	criteria1 = findin(data_symbols, symbol_list)
-	criteria2 = findin((gene_means .> minmean), true)
-	criteria3 = findin((gene_cvs .> mincv), true)
-	criteria4 = findin((gene_cvs .< maxcv), true)
+	criteria1 = findall(in(symbol_list), data_symbols)
+	criteria2 = findall(in(true), (gene_means .> minmean))
+	criteria3 = findall(in(true), (gene_cvs .> mincv))
+	criteria4 = findall(in(true), (gene_cvs .< maxcv))
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria, :]
