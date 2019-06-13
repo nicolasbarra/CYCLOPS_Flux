@@ -50,7 +50,6 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
-#makefloatfull!(4, fullnonseed_data)
 
 alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[3:end, 2]
@@ -63,7 +62,7 @@ alldata_samples = String.(names(fullnonseed_data))
 alldata_samples = alldata_samples[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
-makefloat!(alldata_data)
+makefloat!(1, alldata_data)
 
 alldata_data = convert(Matrix, alldata_data)
 
