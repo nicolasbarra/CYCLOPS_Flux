@@ -31,6 +31,22 @@ function makefloatfull!(x, df)
     end
 end
 
+# find the samples that have no time stamp so you can remove them
+function findnotime(df)
+  r = []
+  for row in 1:length(df)
+    if typeof(df[row]) == String
+      append!(r, row)
+    end
+  end
+  r
+end
+
+Frac_Var = 0.85  # Set Number of Dimensions of SVD to maintain this fraction of variance
+DFrac_Var = 0.03  # Set Number of Dimensions of SVD so that incremetal fraction of variance of var is at least this much
+N_best = 10  # Number of random initial conditions to try for each optimization
+total_background_num = 10  # Number of background runs for global background refrence distribution (bootstrap). For real runs, this should be much higher.
+
 seed_homologues1 = CSV.read("Human_UbiquityCyclers.csv")
 homologue_symbol_list1=seed_homologues1[2:end,2]
 
@@ -61,17 +77,6 @@ alldata_data = convert(Matrix, alldata_data)
 n_samples = length(alldata_times)
 n_probes = length(alldata_probes)
 
-# find the samples that have no time stamp so you can remove them
-function findnotime(df)
-  r = []
-  for row in 1:length(df)
-    if typeof(df[row]) == String
-      append!(r, row)
-    end
-  end
-  r
-end
-
 timestamped_samples = setdiff(1:n_samples, findnotime(alldata_times))
 
 cutrank = n_probes-MaxSeeds
@@ -84,8 +89,8 @@ fullnonseed_data_array = convert(Matrix, fullnonseed_data)
 
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data_array, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
-#seed_data1 = dispersion!(seed_data1)
-#outs1, norm_seed_data1 = GetEigenGenes(seed_data1, Frac_Var, DFrac_Var, 30)
+seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
+outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
 
