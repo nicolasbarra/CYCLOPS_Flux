@@ -86,5 +86,5 @@ model = Chain(encoder, bottleneck, decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
-evalcb = Flux.throttle(() -> @show(loss(l_norm_seed_data[1])), 5)
-Flux.@epochs 1 Flux.train!(loss, Flux.params(model), l_norm_seed_data, ADAM(), cb = evalcb)
+evalcb = Flux.throttle(() -> @show(loss(norm_seed_data1[1])), 5)
+Flux.@epochs 1 Flux.train!(loss, Flux.params(model), norm_seed_data1, ADAM(), cb = evalcb)
