@@ -84,7 +84,13 @@ decoder = Dense(2, outs1, x -> x)
 
 model = Chain(encoder, bottleneck, decoder)
 
-loss(x) = Flux.mse(model(x), x)
+loss(x, y) = Flux.mse(model(x), y)
 
-evalcb = Flux.throttle(() -> @show(loss(norm_seed_data1[1])), 5)
-Flux.@epochs 1 Flux.train!(loss, Flux.params(model), norm_seed_data1, ADAM(), cb = evalcb)
+
+x = rand(outs1)
+y = rand(outs1)
+data = [(x, y)]
+
+
+evalcb = @show(loss(norm_seed_data1[1]))
+Flux.@epochs 1 Flux.train!(loss, Flux.params(model), data, ADAM(), cb = Flux.throttle(evalcb, 5))
