@@ -144,11 +144,24 @@ function dispersion(data::Array{Float64, 2})
 	ndata
 end
 
-function getseed_homologuesymbol_brain(data::Array{Any, 2}, symbol_list, maxcv, mincv, minmean, blunt)
-	data_symbols = data[4:end, 2]
-	data_probes = data[4:end, 1]
+function getseed_homologuesymbol_brain(data, symbol_list, maxcv, mincv, minmean, blunt)
+	data_probes = data[3:end, 1]
+	data_symbols = data[3:end, 2]
 
-	data_data = data[4:end, 4:end]
+	data_data = data[3:end, 4:end]
+
+	function makefloat!(x, df)
+	    for col in x:size(df)[2]
+	        if typeof(df[:, col]) == Array{String,1}
+	            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
+	        end
+	    end
+	end
+
+	makefloat!(1, data_data)
+	# convert to array from DataFrame for use in functions
+	data_data = convert(Matrix, data_data)
+
 	data_data = Array{Float64}(data_data)
 	data_data = clean_data!(data_data, blunt)
 	ngenes, namples = size(data_data)
