@@ -50,10 +50,8 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
-
 alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[3:end, 2]
-
 alldata_subjects = fullnonseed_data[1, 4:end]
 alldata_times = fullnonseed_data[2, 4:end]
 # first get the heade of the dataframe which has the samples as array of Strings
@@ -63,7 +61,6 @@ alldata_samples = alldata_samples[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
 makefloat!(1, alldata_data)
-
 alldata_data = convert(Matrix, alldata_data)
 
 n_samples = length(alldata_times)
@@ -73,8 +70,7 @@ timestamped_samples = setdiff(1:n_samples, findnotime(alldata_times))
 
 cutrank = n_probes - MaxSeeds
 
-Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]
-println(Seed_MinMean)  # Note that this number is slightly different in new version versus old (42.889112582772285 here versus 42.88460199555892 in the old file) this is likely due to the fact that my method removes null values better (maybe?))
+Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  # Note that this number is slightly different in new version versus old (42.88460199564358 here versus 42.88460199555892 in the old file). This is due to the fact that when the data is imported from the CSV it is automatically rounded after a certain number of decimal points.
 
 # convert to array from DataFrame for use in functions
 fullnonseed_data_array = convert(Matrix, fullnonseed_data)
