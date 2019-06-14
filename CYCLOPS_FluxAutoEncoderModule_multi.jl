@@ -73,7 +73,7 @@ cutrank = n_probes - MaxSeeds
 Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  # Note that this number is slightly different in new version versus old (42.88460199564358 here versus 42.88460199555892 in the old file). This is due to the fact that when the data is imported from the CSV it is automatically rounded after a certain number of decimal points.
 
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
-seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data_array, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
+seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
@@ -87,4 +87,4 @@ model = Chain(encoder, bottleneck, decoder)
 loss(x) = Flux.mse(model(x), x)
 
 evalcb = Flux.throttle(() -> @show(loss(l_norm_seed_data[1])), 5)
-@epochs 1 Flux.train!(loss, Flux.params(model)), l_norm_seed_data, ADAM(), cb = evalcb)
+Flux.@epochs 1 Flux.train!(loss, Flux.params(model), l_norm_seed_data, ADAM(), cb = evalcb)
