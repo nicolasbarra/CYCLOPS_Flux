@@ -166,14 +166,14 @@ function getseed_homologuesymbol_brain(data, symbol_list, maxcv, mincv, minmean,
 	data_data = clean_data!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
-	gene_means = mean(data_data, dims=2)
-	gene_sds = Statistics.std(data_data; dims=2)
+	gene_means = vec(mean(data_data, dims=2))
+	gene_sds = vec(Statistics.std(data_data; dims=2))
 	gene_cvs = gene_sds ./ gene_means
 
 	criteria1 = findall(in(symbol_list), data_symbols)
-	criteria2 = findall(in(true), (gene_means .> minmean))
-	criteria3 = findall(in(true), (gene_cvs .> mincv))
-	criteria4 = findall(in(true), (gene_cvs .< maxcv))
+	criteria2 = findall(gene_means .> minmean)
+	criteria3 = findall(gene_cvs .> mincv)
+	criteria4 = findall(gene_cvs .< maxcv)
 
 	allcriteria = intersect(criteria1, criteria2, criteria3, criteria4)
 	seed_data = data_data[allcriteria, :]
