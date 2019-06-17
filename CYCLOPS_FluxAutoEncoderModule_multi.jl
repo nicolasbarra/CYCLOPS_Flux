@@ -1,4 +1,4 @@
-using Flux, CSV, Statistics, Distributed
+using Flux, CSV, Statistics, Distributed, Juno
 import Random
 
 @everywhere basedir = homedir()
@@ -76,21 +76,17 @@ Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  # Note that t
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
+#= Data passed into Flux models must be in the form of an array of arrays where both the inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
+norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
 encoder = Dense(outs1, 2, x -> x)
 bottleneck = Dense(2, 2, circ)
 decoder = Dense(2, outs1, x -> x)
 
-model = Chain(encoder, bottleneck, decoder)
+model = Chain(encoder, decoder)
 
-loss(x, y) = Flux.mse(model(x), y)
+loss(x) = Flux.mse(model(x), x)
 
-
-x = rand(outs1)
-y = rand(outs1)
-data = [(x, y)]
-
-
-evalcb = @show(loss(norm_seed_data1[1]))
-Flux.@epochs 1 Flux.train!(loss, Flux.params(model), data, ADAM(), cb = Flux.throttle(evalcb, 5))
+evalcb = @show(loss(norm_seed_data2[1]))
+Flux.@epochs 1 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = Flux.throttle(evalcb, 5))
