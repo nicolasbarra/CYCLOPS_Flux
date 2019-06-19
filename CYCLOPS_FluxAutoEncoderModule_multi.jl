@@ -1,4 +1,4 @@
-using Flux, CSV, Statistics, Distributed, Juno
+using Flux, CSV, Statistics, Distributed, Juno, PyPlot
 import Random
 
 @everywhere basedir = homedir()
@@ -7,11 +7,6 @@ import Random
 @everywhere include("CYCLOPS_PrePostProcessModule.jl")
 @everywhere include("CYCLOPS_SeedModule.jl")
 @everywhere include("CYCLOPS_SmoothModule_multi.jl")
-
-# circular activation function
-function circ(z::Float64,zstar::Float64)
-    z/(sqrt(z^2+zstar^2))
-end
 
 # make all the columns (beginning at inputted column number) of a the alldata_data DataFrame of type Float64, not String since they are Numbers
 function makefloat!(x, df)
@@ -23,14 +18,26 @@ function makefloat!(x, df)
 end
 
 # find the samples that have no time stamp so you can remove them
-function findnotime(df)
+function findNAtime(df)
   r = []
   for row in 1:length(df)
-    if typeof(df[row]) == Nothing
+    if typeof(df[row]) == String
       append!(r, row)
     end
   end
+
   r
+end
+
+# extracts the phase angles from the model for analysis
+function extractphase(data_matrix, model)
+    points = size(data_matrix, 2)
+    phases = zeros(points)
+    for n in 1:points
+        phases[n] = Tracker.data(atan(model[1:2](data_matrix[:, n])[2], model[1:2](data_matrix[:, n])[1]))
+    end
+
+    phases
 end
 
 Frac_Var = 0.85  # Set Number of Dimensions of SVD to maintain this fraction of variance
@@ -64,10 +71,14 @@ makefloat!(1, alldata_data)
 alldata_data = convert(Matrix, alldata_data)
 
 n_samples = length(alldata_times)
+
+timestamped_samples = setdiff(1:n_samples, findNAtime(alldata_times))
+
+alldata_times = (Vector(alldata_times))
+
+truetimes = mod.(Array{Float64}(alldata_times[timestamped_samples]), 24)
+
 n_probes = length(alldata_probes)
-
-timestamped_samples = setdiff(1:n_samples, findnotime(alldata_times))
-
 cutrank = n_probes - MaxSeeds
 
 Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  # Note that this number is slightly different in new version versus old (42.88460199564358 here versus 42.88460199555892 in the old file). This is due to the fact that when the data is imported from the CSV it is automatically rounded after a certain number of decimal points.
@@ -76,17 +87,42 @@ Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  # Note that t
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
+
+# TODO: Figure out why this is needed below
+outs1 = 5
+norm_seed_data1 = norm_seed_data1[1:5, :]
+
 #= Data passed into Flux models must be in the form of an array of arrays where both the inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
-encoder = Dense(outs1, 2, x -> x)
-bottleneck = Dense(2, 2, circ)
-decoder = Dense(2, outs1, x -> x)
+encoder = Dense(outs1, 2)
+circ(x) = x./sqrt(sum(x .* x))
+decoder = Dense(2, outs1)
 
-model = Chain(encoder, decoder)
+model = Chain(encoder, circ, decoder)
+
+#modelcomplexer = Chain(encoderA1, x -> cat(bottlenecklinear(x), bottleneckcircular(x), dims=), decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
+Flux.@epochs 2000 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = Flux.throttle(() -> println(string("Loss: ", loss(norm_seed_data1))), 5))
 
-Flux.@epochs 1 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = Flux.throttle(@show(loss(norm_seed_data2)), 5))
+estimated_phaselist = extractphase(norm_seed_data1, model)
+estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
+
+estimated_phaselist1 = estimated_phaselist[timestamped_samples]
+
+shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
+
+scatter(truetimes, shiftephaselist, alpha=.75, s=14)
+title("Eigengenes Encoded by Single Phase")
+ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
+ylabs=[0, "", "π", "", "2π"]
+xlabp=[0, 6, 12, 18, 24]
+xlabs=["0", "6", "12", "18", "24"]
+ylabel("CYCLOPS Phase (radians)", fontsize=14)
+xlabel("Hour of Death", fontsize=14)
+xticks(xlabp, xlabs)
+yticks(ylabp, ylabs)
+suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
