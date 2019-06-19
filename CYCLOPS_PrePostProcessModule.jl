@@ -76,10 +76,10 @@ function best_shift_cos(list1, list2, conversion_flag)
     bestlist = zeros(nlist)
     n = 0
 
-    function bestlistfinder(x)
-        for a in linspace(-pi, pi, 192)
+    function bestlistfinder1(x)
+        for a in range(-pi, stop = pi, length = 192)
             n = n + 1
-            llist1 = mod.(x, 2*pi)
+            llist1 = mod.(x .+ a, 2*pi)
             runningscore = 0
             for i in 1:nlist
                 cosd = (1 - cos(llist1[i] - llist2[i])) / 2
@@ -93,8 +93,25 @@ function best_shift_cos(list1, list2, conversion_flag)
         end
     end
 
-    bestlistfinder(list1 + a)
-    bestlistfinder(-(list1 + a))
+    function bestlistfinder2(x)
+        for a in range(-pi, stop = pi, length = 192)
+            n = n + 1
+            llist1 = mod.(-(x .+ a), 2*pi)
+            runningscore = 0
+            for i in 1:nlist
+                cosd = (1 - cos(llist1[i] - llist2[i])) / 2
+                runningscore = runningscore + cosd
+            end
+            adist = runningscore / nlist
+            if bestdist > adist
+                bestdist = adist
+                bestlist = llist1
+            end
+        end
+    end
+
+    bestlistfinder1(list1)
+    bestlistfinder2(list1)
 
     bestlist
 end
