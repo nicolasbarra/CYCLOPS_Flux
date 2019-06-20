@@ -100,13 +100,56 @@ encoder = Dense(outs1, 2)
 circ(x) = x./sqrt(sum(x .* x))
 decoder = Dense(2, outs1)
 
+#=
+circ(x::TrackedArray) = track(circ, x)
+Tracker.@grad function circ(x)
+    return circ(Tracker.data(x)), Δ ->
+=#
+
 model = Chain(encoder, circ, decoder)
 
 #modelcomplexer = Chain(encoderA1, x -> cat(bottlenecklinear(x), bottleneckcircular(x), dims=), decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
-Flux.@epochs 2000 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = Flux.throttle(() -> println(string("Loss: ", loss(norm_seed_data1))), 5))
+import Flux.Tracker: Params, gradient, data, update!
+
+call(f, xs...) = f(xs...)
+runall(f) = f
+runall(fs::AbstractVector) = () -> foreach(call, fs)
+struct StopException <: Exception end
+
+function mytrain!(loss, ps, data, opt; cb = () -> ())
+  lossrec =[]
+  ps = Flux.Params(ps)
+  cb = runall(cb)
+  @progress for d in data
+    try
+      gs = Flux.gradient(ps) do
+        loss(d...)
+
+      end
+      append!(lossrec, Tracker.data(loss(d...)))
+      update!(opt, ps, gs)
+    catch ex
+      if ex isa StopException
+        break
+      else
+        rethrow(ex)
+      end
+    end
+  end
+
+  println(string("Average loss this epoch: ", mean(lossrec)))
+end
+
+
+evalcb = Flux.throttle(() -> println(string("Loss: ", loss(norm_seed_data1))), 5)
+Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = evalcb)
+
+#Flux.@epochs 500 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001), cb = evalcb)
+
+#=
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
@@ -126,3 +169,6 @@ xlabel("Hour of Death", fontsize=14)
 xticks(xlabp, xlabs)
 yticks(ylabp, ylabs)
 suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
+gcf()
+
+=#
