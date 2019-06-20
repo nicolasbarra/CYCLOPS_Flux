@@ -103,7 +103,7 @@ decoder = Dense(2, outs1)
 #=
 circ(x::TrackedArray) = track(circ, x)
 Tracker.@grad function circ(x)
-    return circ(Tracker.data(x)), Δ ->
+    return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
 model = Chain(encoder, circ, decoder)
@@ -119,6 +119,7 @@ runall(f) = f
 runall(fs::AbstractVector) = () -> foreach(call, fs)
 struct StopException <: Exception end
 
+lossrecs=[]
 function mytrain!(loss, ps, data, opt; cb = () -> ())
   lossrec =[]
   ps = Flux.Params(ps)
@@ -127,10 +128,12 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
     try
       gs = Flux.gradient(ps) do
         loss(d...)
-
       end
-      append!(lossrec, Tracker.data(loss(d...)))
       update!(opt, ps, gs)
+      append!(lossrec, loss(d...))
+      if cb() == :stop
+        break
+      end
     catch ex
       if ex isa StopException
         break
@@ -140,13 +143,23 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
     end
   end
 
-  println(string("Average loss this epoch: ", mean(lossrec)))
+  avg = mean(lossrec)
+  println(string("Average loss this epoch: ", avg))
+  append!(lossrecs, Tracker.data(avg))
 end
 
+Flux.@epochs 450 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
 
-evalcb = Flux.throttle(() -> println(string("Loss: ", loss(norm_seed_data1))), 5)
-Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), ADAM(), cb = evalcb)
+encoder1 = Dense(outs1, 2)
+circ1(x) = x./sqrt(sum(x .* x))
+decoder1 = Dense(2, outs1)
+model2 = Chain(encoder1, circ1, decoder1)
+loss2(x) = Flux.mse(model2(x), x)
+Flux.@epochs 1000 mytrain!(loss2, Flux.params(model2), zip(norm_seed_data2), Descent(0.01))
 
+#println(lossrecs[420:475])
+#plot(Tracker.data(lossrecs[410:1000]))
+#gcf()
 #Flux.@epochs 500 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001), cb = evalcb)
 
 #=
@@ -172,3 +185,10 @@ suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
 
 =#
+
+errors = Circular_Error_List(2*pi * truetimes / 24, shiftephaselist)
+hrerrors = (12/pi) * abs.(errors)
+mean(hrerrors)
+median(hrerrors)
+sqrt(var(hrerrors))
+sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]
