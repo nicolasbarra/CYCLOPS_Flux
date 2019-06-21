@@ -142,7 +142,7 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
   append!(lossrecs, Tracker.data(avg))
 end
 
-Flux.@epochs 450 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), ADAM())
 #=
 encoder1 = Dense(outs1, 2)
 circ1(x) = x./sqrt(sum(x .* x))
@@ -154,9 +154,10 @@ Flux.@epochs 1000 mytrain!(loss2, Flux.params(model2), zip(norm_seed_data2), Des
 #println(lossrecs[420:475])
 #plot(Tracker.data(lossrecs[410:1000]))
 #gcf()
-#Flux.@epochs 500 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001), cb = evalcb)
-
 =#
+
+Flux.@epochs 500 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001))
+
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
