@@ -2,16 +2,16 @@ module CYCLOPS_CircularStatsModule
 
 using StatsBase, MultivariateStats
 
-export Circular_Mean, Fischer_Circular_CorrelationMeasures, Jammalamadka_Circular_CorrelationMeasures, Circular_Error, Circular_Error_List
+export circularmean, Fischer_circular_correlation_measures, Jammalamadka_circular_correlation_measures, circularerror, circularerrorlist
 
-function Circular_Mean(phases::Array{Number, 1})
+function circularmean(phases::Array{Number, 1})
   sinterm = sum(sin.(phases))
   costerm = sum(cos.(phases))
 
   atan(sinterm, costerm)
 end
 
-function Fischer_Circular_Correlations(rphases, sphases)
+function Fischer_circular_correlations(rphases, sphases)
 	n1 = length(rphases)
 	n2 = length(sphases)
 
@@ -37,12 +37,12 @@ function Fischer_Circular_Correlations(rphases, sphases)
 	fischercor
 end
 
-function Jammalamadka_Circular_Correlations(rphases, sphases)
+function Jammalamadka_circular_correlations(rphases, sphases)
 	numtot = 0.
 	d1tot = 0.
 	d2tot = 0.
 
-	bar = x -> mod.(2*pi + Circular_Mean(x), 2*pi)
+	bar = x -> mod.(2*pi + circularmean(x), 2*pi)
 	rbar = bar(rphases)
 	sbar = bar(sphases)
 
@@ -56,14 +56,14 @@ function Jammalamadka_Circular_Correlations(rphases, sphases)
 end
 
 #= This is a modification of he Jammalamadka Circular Correlation described in Topics in Circular Statistics. It is required beacuse the circular average is not well defined with circular uniform data. This measure should only be used when 1 or both of the data sets being compared are uniform =#
-function Jammalamadka_Uniform_Circular_Correlations(rphases, sphases)
+function Jammalamadka_uniform_circular_correlations(rphases, sphases)
 	rphases = mod.(rphases, 2*pi)
 	sphases = mod.(sphases, 2*pi)
 
 	r_minus_s_bar = mod(atan2(sum(sin.(rphases - sphases)), sum(cos.(rphases - sphases))), 2*pi)
 	r_plus_s_bar = mod(atan2(sum(sin.(rphases + sphases)), sum(cos.(rphases + sphases))), 2*pi)
 
-	bars = FindComponentAngles(r_plus_s_bar, r_minus_s_bar)
+	bars = findcomponentangles(r_plus_s_bar, r_minus_s_bar)
 	rbar = bars[1]
 	sbar = bars[2]
 
@@ -77,7 +77,7 @@ function Jammalamadka_Uniform_Circular_Correlations(rphases, sphases)
 	Jammalamadka
 end
 
-function Circular_Rank_Phases(rphases)
+function circular_rank_phases(rphases)
 	num = length(rphases)
 	rphases = mod.(rphases+2*pi,2*pi)
 	rranks = tiedrank(rphases)
@@ -86,10 +86,10 @@ function Circular_Rank_Phases(rphases)
 	rrankphases
 end
 
-function Jammalamadka_Rank_Circular_Correlations(rphases, sphases)
+function Jammalamadka_rank_circular_correlations(rphases, sphases)
 
-	rphases = Circular_Rank_Phases(rphases)
-	sphases = Circular_Rank_Phases(sphases)
+	rphases = circular_rank_phases(rphases)
+	sphases = circular_rank_phases(sphases)
 
 	r_minus_s_bar = mod(atan2(sum(sin.(rphases - sphases)), sum(cos.(rphases - sphases))), 2*pi)
 	r_plus_s_bar = mod(atan2(sum(sin.(rphases+sphases)), sum(cos.(rphases+sphases))), 2*pi)
@@ -104,32 +104,32 @@ function Jammalamadka_Rank_Circular_Correlations(rphases, sphases)
 	Jammalamadka
 end
 
-function FindComponentAngles(angle_sum, angle_diff)
+function findcomponentangles(angle_sum, angle_diff)
   rang = (angle_sum + angle_diff) / 2
   sang = (angle_sum - angle_diff) / 2
 
 	[rang,sang]
 end
 
-function Fischer_Circular_CorrelationMeasures(rphases, sphases)
-	rrankphases = Circular_Rank_Phases(rphases)
-	srankphases = Circular_Rank_Phases(sphases)
+function Fischer_circular_correlation_measures(rphases, sphases)
+	rrankphases = circular_rank_phases(rphases)
+	srankphases = circular_rank_phases(sphases)
 
-	F = Fischer_Circular_Correlations(rphases, sphases)
-	FR = Fischer_Circular_Correlations(rrankphases, srankphases)
+	F = Fischer_circular_correlations(rphases, sphases)
+	FR = Fischer_circular_correlations(rrankphases, srankphases)
 
 	[F, FR]
 end
 
-function Jammalamadka_Circular_CorrelationMeasures(rphases, sphases)
-	J = Jammalamadka_Circular_Correlations(rphases, sphases)
-	JU = Jammalamadka_Uniform_Circular_Correlations(rphases, sphases)
-	JR = Jammalamadka_Rank_Circular_Correlations(rphases, sphases)
+function Jammalamadka_circular_correlation_measures(rphases, sphases)
+	J = Jammalamadka_circular_correlations(rphases, sphases)
+	JU = Jammalamadka_uniform_circular_correlations(rphases, sphases)
+	JR = Jammalamadka_rank_circular_correlations(rphases, sphases)
 
 	[J, JU, JR]
 end
 
-function Circular_Error(truth, estimate)
+function circularerror(truth, estimate)
 	truth = mod(2*pi + truth, 2*pi)
 	estimate = mod(2*pi + estimate, 2*pi)
 
@@ -139,7 +139,7 @@ function Circular_Error(truth, estimate)
 	min(diff1, diff2)
 end
 
-function Circular_Error_List(true_list, estimate_list)
+function circularerrorlist(true_list, estimate_list)
 	n1 = length(true_list)
 	n2 = length(estimate_list)
 
@@ -150,7 +150,7 @@ function Circular_Error_List(true_list, estimate_list)
 	error_list = zeros(n1)
 
 	for count in 1:n1
-		error_list[count] = Circular_Error(true_list[count], estimate_list[count])
+		error_list[count] = circularerror(true_list[count], estimate_list[count])
 	end
 
 	error_list
