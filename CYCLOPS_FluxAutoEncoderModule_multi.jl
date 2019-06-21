@@ -7,6 +7,7 @@ import Random
 @everywhere include("CYCLOPS_PrePostProcessModule.jl")
 @everywhere include("CYCLOPS_SeedModule.jl")
 @everywhere include("CYCLOPS_SmoothModule_multi.jl")
+@everywhere include("CYCLOPS_MyTrainSuppportModule.jl")
 
 # make all the columns (beginning at inputted column number) of a the alldata_data DataFrame of type Float64, not String since they are Numbers
 function makefloat!(x, df)
@@ -112,30 +113,23 @@ model = Chain(encoder, circ, decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
-import Flux.Tracker: Params, gradient, data, update!
-
-call(f, xs...) = f(xs...)
-runall(f) = f
-runall(fs::AbstractVector) = () -> foreach(call, fs)
-struct StopException <: Exception end
-
 lossrecs=[]
 function mytrain!(loss, ps, data, opt; cb = () -> ())
   lossrec =[]
   ps = Flux.Params(ps)
-  cb = runall(cb)
+  cb = CYCLOPS_MyTrainSuppportModule.runall(cb)
   @progress for d in data
     try
       gs = Flux.gradient(ps) do
         loss(d...)
       end
-      update!(opt, ps, gs)
+      Tracker.update!(opt, ps, gs)
       append!(lossrec, loss(d...))
       if cb() == :stop
         break
       end
     catch ex
-      if ex isa StopException
+      if ex isa CYCLOPS_MyTrainSuppportModule.StopException
         break
       else
         rethrow(ex)
@@ -149,7 +143,7 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
 end
 
 Flux.@epochs 450 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
-
+#=
 encoder1 = Dense(outs1, 2)
 circ1(x) = x./sqrt(sum(x .* x))
 decoder1 = Dense(2, outs1)
@@ -162,7 +156,7 @@ Flux.@epochs 1000 mytrain!(loss2, Flux.params(model2), zip(norm_seed_data2), Des
 #gcf()
 #Flux.@epochs 500 Flux.train!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001), cb = evalcb)
 
-#=
+=#
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
@@ -171,6 +165,7 @@ estimated_phaselist1 = estimated_phaselist[timestamped_samples]
 
 shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
 
+#=
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
 title("Eigengenes Encoded by Single Phase")
 ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
@@ -183,12 +178,12 @@ xticks(xlabp, xlabs)
 yticks(ylabp, ylabs)
 suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
-
 =#
 
-errors = Circular_Error_List(2*pi * truetimes / 24, shiftephaselist)
+errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
 hrerrors = (12/pi) * abs.(errors)
-mean(hrerrors)
-median(hrerrors)
-sqrt(var(hrerrors))
-sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]
+println("Error from true times: ")
+println(string("Mean: ", mean(hrerrors)))
+println(string("Median: ", median(hrerrors)))
+println(string("Standard Deviation: ", sqrt(var(hrerrors))))
+println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
