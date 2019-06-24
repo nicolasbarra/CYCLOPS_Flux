@@ -136,7 +136,16 @@ function circularerror(truth, estimate)
 	diff1 = mod((truth - estimate), 2*pi)
 	diff2 = diff1 - (2*pi)
 
-	min(diff1, diff2)
+	if (abs(diff1)<=abs(diff2))
+		diff=diff1
+	end
+
+	if (abs(diff2)<abs(diff1))
+		diff=diff2
+	end
+
+	e=diff
+	e
 end
 
 function circularerrorlist(true_list, estimate_list)
