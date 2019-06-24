@@ -63,7 +63,7 @@ alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[3:end, 2]
 alldata_subjects = fullnonseed_data[1, 4:end]
 alldata_times = fullnonseed_data[2, 4:end]
-# first get the heade of the dataframe which has the samples as array of Strings
+# first get the head of the dataframe which has the samples as array of Strings
 alldata_samples = String.(names(fullnonseed_data))
 # then extract from that array only the headers that actually correspond with samples and not just the other headers that are there
 alldata_samples = alldata_samples[4:end]
@@ -114,7 +114,7 @@ Tracker.@grad function circ(x)
 
 model = Chain(encoder, circ, decoder)
 
-#modelcomplexer = Chain(encoderA1, x -> cat(bottlenecklinear(x), bottleneckcircular(x), dims=), decoder)
+#modelcomplex = Chain(encoderA1, x -> cat(bottlenecklinear(x), bottleneckcircular(x), dims=), decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
@@ -150,16 +150,32 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
     #append!(count, 1)
     #BSON.@save string(size(lossrecs, 1), "model.bson") model
   #end
+
+  Tracker.data(avg)
 end
 
-Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+macro myepochs(n, ex)
+  return :(lossrecord = [];
+  @progress for i = 1:$(esc(n))
+      @info "Epoch $i"
+      avgloss = $(esc(ex))
+      if size(lossrecord, 3) > 1 && avgloss > avgloss[size(avgloss, 1)] && avgloss > avgloss[size(avgloss, 1) - 1]
+        break
+      else
+        append!(lossrecord, avgloss)
+      end
+    end;
 
-#=
+    lossrecord)
+end
+
+@myepochs 3000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+
 # This code can be uncommented in order to graph the loss over the epochs of training that have been done. and you can change the parameters of 1 and end to focus in on some component of the graph.
 close()
-plot(Tracker.data(lossrecs[1:end]))
+plot(Tracker.data(lossrecs[200:end]))
 gcf()
-=#
+
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
