@@ -1,4 +1,5 @@
-using Flux, CSV, Statistics, Distributed, Juno, PyPlot
+using Flux, CSV, Statistics, Distributed, Juno, PyPlot, BSON
+
 import Random
 
 @everywhere basedir = homedir()
@@ -90,8 +91,10 @@ seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
 # TODO: Figure out why this is needed below
+#=
 outs1 = 5
 norm_seed_data1 = norm_seed_data1[1:5, :]
+=#
 
 #= Data passed into Flux models must be in the form of an array of arrays where both the inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
@@ -102,6 +105,8 @@ circ(x) = x./sqrt(sum(x .* x))
 decoder = Dense(2, outs1)
 
 #=
+# The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
+
 circ(x::TrackedArray) = track(circ, x)
 Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
@@ -113,7 +118,8 @@ model = Chain(encoder, circ, decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
-lossrecs=[]
+lossrecs = []
+#count = []
 function mytrain!(loss, ps, data, opt; cb = () -> ())
   lossrec =[]
   ps = Flux.Params(ps)
@@ -140,24 +146,20 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
   avg = mean(lossrec)
   println(string("Average loss this epoch: ", avg))
   append!(lossrecs, Tracker.data(avg))
+  #if size(lossrecs, 1) > 1 && size(count, 1) < 1 && lossrecs[size(lossrecs, 1)] > lossrecs[size(lossrecs, 1) - 1]
+    #append!(count, 1)
+    #BSON.@save string(size(lossrecs, 1), "model.bson") model
+  #end
 end
 
-Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), ADAM())
+Flux.@epochs 1000 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+
 #=
-encoder1 = Dense(outs1, 2)
-circ1(x) = x./sqrt(sum(x .* x))
-decoder1 = Dense(2, outs1)
-model2 = Chain(encoder1, circ1, decoder1)
-loss2(x) = Flux.mse(model2(x), x)
-Flux.@epochs 1000 mytrain!(loss2, Flux.params(model2), zip(norm_seed_data2), Descent(0.01))
-
-#println(lossrecs[420:475])
-#plot(Tracker.data(lossrecs[410:1000]))
-#gcf()
+# This code can be uncommented in order to graph the loss over the epochs of training that have been done. and you can change the parameters of 1 and end to focus in on some component of the graph.
+close()
+plot(Tracker.data(lossrecs[1:end]))
+gcf()
 =#
-
-Flux.@epochs 500 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.0001))
-
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
@@ -167,6 +169,8 @@ estimated_phaselist1 = estimated_phaselist[timestamped_samples]
 shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
 
 #=
+# This can be uncommented to replicate the first graph in the paper.
+
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
 title("Eigengenes Encoded by Single Phase")
 ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
@@ -181,6 +185,7 @@ suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
 =#
 
+#  The below prints to the console the releveant error statistics using the true times that we know.
 errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
 hrerrors = (12/pi) * abs.(errors)
 println("Error from true times: ")
