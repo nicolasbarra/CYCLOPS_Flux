@@ -1,6 +1,11 @@
 module CYCLOPS_PrePostProcessModule
 
-using StatsBase, MultivariateStats, Distributions, LinearAlgebra, Distributed
+using Distributed: @spawn
+using Statistics: mean
+using LinearAlgebra: svd
+using StatsBase: fit, zscore
+using MultivariateStats: outdim, transform, llsq
+using Distributions: sample, var, FDist, cdf
 
 export getEigengenes, get_N_Eigengenes, PCA_transform_seed_data, repeat_PCA_transform_data, row_shuffle, Bonferroni_adjust, best_shift_cos, best_shift_cos2, cosinor_stats, multicore_cosinor_stats, compile_multicore_cosinor_stats
 
@@ -113,7 +118,7 @@ function best_shift_cos2(acrophaselist1, acrophaselist2, samplephase1, conversio
     bestsamplephase1 = samplephase1
 
     function bestsamplephase1_finder(x, y)
-        for a in linspace(-pi, pi, 192)
+        for a in range(-pi, stop = pi, length = 192)
             llist1 = mod.(x, 2*pi)
             adist = mean(1 - cos.(float(llist1 - llist2)))
             if bestdist > adist
@@ -132,7 +137,7 @@ end
 
 function cosinor_stats(expression::Array{Float64, 1}, o_PREDICTED_PHASELIST::Array{Float64, 1}, n_shifts=20)
     len = size(o_PREDICTED_PHASELIST)[1]
-    shift_list = linspace(2*pi / n_shifts, 2*pi, n_shifts)
+    shift_list = range(2*pi / n_shifts, stop = 2*pi, length = n_shifts)
 
     min_error = var(expression) * 10E20
     best_shift = "error"
@@ -221,20 +226,20 @@ function compile_multicore_cosinor_stats(annotated_data::Array{Any, 2}, PREDICTE
 
     ngenes = size(alldata_data)[1]
     rowbin = Int(floor(ngenes / 5))
-    tic()
-    estimated_phaselist = vec(PREDICTED_PHASELIST)
-    c1 = @spawn MultiCore_Cosinor_Statistics(alldata_data[(1:(1*rowbin)), :], estimated_phaselist)
-    c2 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 1 * rowbin):(2 * rowbin)), :], estimated_phaselist, n_shifts)
-    c3 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 2 * rowbin):(3 * rowbin)), :], estimated_phaselist, n_shifts)
-    c4 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 3 * rowbin):(4 * rowbin)), :], estimated_phaselist, n_shifts)
-    c5 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 4 * rowbin):ngenes), :], estimated_phaselist, n_shifts)
+    @time begin
+        estimated_phaselist = vec(PREDICTED_PHASELIST)
+        c1 = @spawn MultiCore_Cosinor_Statistics(alldata_data[(1:(1*rowbin)), :], estimated_phaselist)
+        c2 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 1 * rowbin):(2 * rowbin)), :], estimated_phaselist, n_shifts)
+        c3 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 2 * rowbin):(3 * rowbin)), :], estimated_phaselist, n_shifts)
+        c4 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 3 * rowbin):(4 * rowbin)), :], estimated_phaselist, n_shifts)
+        c5 = @spawn MultiCore_Cosinor_Statistics(alldata_data[((1 + 4 * rowbin):ngenes), :], estimated_phaselist, n_shifts)
 
-    PrbPval1, PrbPhase1, PrbAmp1, PrbFitMean1, PrbMean1, PrbRsq1 = fetch(c1)
-    PrbPval2, PrbPhase2, PrbAmp2, PrbFitMean2, PrbMean2, PrbRsq2 = fetch(c2)
-    PrbPval3, PrbPhase3, PrbAmp3, PrbFitMean3, PrbMean3, PrbRsq3 = fetch(c3)
-    PrbPval4, PrbPhase4, PrbAmp4, PrbFitMean4, PrbMean4, PrbRsq4 = fetch(c4)
-    PrbPval5, PrbPhase5, PrbAmp5, PrbFitMean5, PrbMean5, PrbRsq5 = fetch(c5)
-    toc()
+        PrbPval1, PrbPhase1, PrbAmp1, PrbFitMean1, PrbMean1, PrbRsq1 = fetch(c1)
+        PrbPval2, PrbPhase2, PrbAmp2, PrbFitMean2, PrbMean2, PrbRsq2 = fetch(c2)
+        PrbPval3, PrbPhase3, PrbAmp3, PrbFitMean3, PrbMean3, PrbRsq3 = fetch(c3)
+        PrbPval4, PrbPhase4, PrbAmp4, PrbFitMean4, PrbMean4, PrbRsq4 = fetch(c4)
+        PrbPval5, PrbPhase5, PrbAmp5, PrbFitMean5, PrbMean5, PrbRsq5 = fetch(c5)
+    end
 
     PrbPval = vcat(PrbPval1, PrbPval2, PrbPval3, PrbPval4, PrbPval5)
     PrbPhase = vcat(PrbPhase1, PrbPhase2, PrbPhase3, PrbPhase4, PrbPhase5)
