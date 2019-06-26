@@ -1,7 +1,5 @@
 module CYCLOPS_CircularStatsModule
 
-using StatsBase, MultivariateStats
-
 export circularmean, Fischer_circular_correlation_measures, Jammalamadka_circular_correlation_measures, circularerror, circularerrorlist
 
 function circularmean(phases::Array{Number, 1})
