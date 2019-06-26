@@ -1,6 +1,6 @@
 module CYCLOPS_SeedModule
 
-using Statistics
+using Statistics: mean, std
 
 export clean_data!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
 
