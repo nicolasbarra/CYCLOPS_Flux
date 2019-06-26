@@ -1,11 +1,12 @@
-using Flux, Juno
+using Flux
 using BSON: @save
+
+include("CYCLOPS_MyTrainModule.jl")
 
 encoderA = Dense(10, 2)
 circ(x) = x./sqrt(sum(x .* x))
 lin = Dense(2, 2)
 decoderB = Dense(4, 10)
-
 
 m1 = Chain(encoderA, x -> cat(circ(x), lin(x); dims = 1), decoderB)
 
@@ -16,10 +17,10 @@ test1 = mapslices(x -> [x], test, dims=1)[:]
 
 loss(x) = Flux.mse(m1(x), x)
 
-Flux.@epochs 1 Flux.train!(loss, Flux.params(m1), zip(test1), ADAM(), cb = () -> println(string("Loss: ", loss(test))))
+a = CYCLOPS_MyTrainModule.mytrain!(loss, Flux.params(m1), zip(test1), ADAM(), cb = () -> println(string("Loss: ", loss(test))))
 #=
 function extractphase(data_matrix, model)
-    points = size(data_matrix, 2)
+    points = size(data_mXatrix, 2)
     phases = zeros(points)
     for n in 1:points
         phases[n] = model[1:2](data_matrix[:, n])
