@@ -167,7 +167,7 @@ function getseed_homologuesymbol_brain(data, symbol_list, maxcv, mincv, minmean,
 	ngenes, namples = size(data_data)
 
 	gene_means = vec(mean(data_data, dims=2))
-	gene_sds = vec(Statistics.std(data_data; dims=2))
+	gene_sds = vec(std(data_data; dims=2))
 	gene_cvs = gene_sds ./ gene_means
 
 	criteria1 = findall(in(symbol_list), data_symbols)
