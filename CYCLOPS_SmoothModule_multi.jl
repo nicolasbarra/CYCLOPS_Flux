@@ -2,7 +2,7 @@ module CYCLOPS_SmoothModule_multi
 
 # Note this is written to take adventage of a 6 core machine
 
-using Distributed, StatsBase, MultivariateStats
+using Distributed: @spawn
 
 export backgroundmetrics_global_eigen, multicore_backgroundmetrics_global_eigen, multicore_backgroundstatistics_global_eigen, smoothness_measures, circ_diff, circ_diff_phases
 
