@@ -44,7 +44,7 @@ macro myepochs(n, ex)
   @progress for i = 1:$(esc(n))
       @info "Epoch $i"
       avgloss = $(esc(ex))
-      if length(lossrecord) > 6 && avgloss > lossrecord[length(lossrecord)] && lossrecord[length(lossrecord)] > lossrecord[length(lossrecord) - 1] && lossrecord[length(lossrecord) - 1] > lossrecord[length(lossrecord) - 2] && lossrecord[length(lossrecord) - 2] > lossrecord[length(lossrecord) - 3]
+      if length(lossrecord) > 6 && avgloss > lossrecord[length(lossrecord)] && lossrecord[length(lossrecord)] > lossrecord[length(lossrecord) - 1] && lossrecord[length(lossrecord) - 1] > lossrecord[length(lossrecord) - 2]
         break
       else
         append!(lossrecord, avgloss)

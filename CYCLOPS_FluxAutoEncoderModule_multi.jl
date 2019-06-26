@@ -12,7 +12,7 @@ import Random
 
 #= make all the columns (beginning at inputted column number) of a the DataFrame of type
 Float64, not String since they are Numbers =#
-function makefloat!(x, df)
+function makefloat!(x::Integer, df)
     for col in x:size(df)[2]
         if typeof(df[:, col]) == Array{String,1}
             df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
@@ -128,28 +128,13 @@ model = Chain(encoder, x -> cat(circ(x), lin(x); dims = 1), decoder)
 
 loss(x) = Flux.mse(model(x), x)
 
-macro myepochs(n, ex)
-  return :(lossrecord = [];
-  @progress for i = 1:$(esc(n))
-      @info "Epoch $i"
-      avgloss = $(esc(ex))
-      if size(lossrecord, 3) > 1 && avgloss > avgloss[size(avgloss, 1)] && avgloss > avgloss[size(avgloss, 1) - 1]
-        break
-      else
-        append!(lossrecord, avgloss)
-      end
-    end;
+lossrecord = CYCLOPS_MyTrainModule.@myepochs 4000 CYCLOPS_MyTrainModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
 
-    lossrecord)
-end
-
-Flux.@epochs 1 CYCLOPS_MyTrainModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
-
-#= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
+# This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
-plot(Tracker.data(lossrecs[200:end]))
+plot(lossrecord[1:end])
 gcf()
-=#
+
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
