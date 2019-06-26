@@ -4,6 +4,8 @@ import Statistics: mean
 import Flux.Tracker: Params, gradient, update!
 import Juno: @progress
 
+export mytrain!
+
 call(f, xs...) = f(xs...)
 runall(f) = f
 runall(fs::AbstractVector) = () -> foreach(call, fs)
