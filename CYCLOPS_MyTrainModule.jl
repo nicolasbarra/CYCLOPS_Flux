@@ -35,4 +35,4 @@ function mytrain!(loss, ps, data, opt; cb = () -> ())
   avg
 end
 
-end  # module CYCLOPS_MyTrainSuppportModule
+end  # module CYCLOPS_MyTrainModule
