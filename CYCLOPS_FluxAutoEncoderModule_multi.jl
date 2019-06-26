@@ -8,7 +8,7 @@ import Random
 @everywhere include("CYCLOPS_PrePostProcessModule.jl")
 @everywhere include("CYCLOPS_SeedModule.jl")
 @everywhere include("CYCLOPS_SmoothModule_multi.jl")
-@everywhere include("CYCLOPS_MyTrainSuppportModule.jl")
+@everywhere include("CYCLOPS_MyTrainModule.jl")
 
 #= make all the columns (beginning at inputted column number) of a the DataFrame of type
 Float64, not String since they are Numbers =#
@@ -126,37 +126,7 @@ Tracker.@grad function circ(x)
 
 model = Chain(encoder, x -> cat(circ(x), lin(x); dims = 1), decoder)
 
-#modelcomplex = Chain(encoderA1, x -> cat(bottlenecklinear(x), bottleneckcircular(x), dims=), decoder)
-
 loss(x) = Flux.mse(model(x), x)
-
-function mytrain!(loss, ps, data, opt; cb = () -> ())
-  lossrec =[]
-  ps = Flux.Params(ps)
-  cb = CYCLOPS_MyTrainSuppportModule.runall(cb)
-  @progress for d in data
-    try
-      gs = Flux.gradient(ps) do
-        loss(d...)
-      end
-      Tracker.update!(opt, ps, gs)
-      append!(lossrec, loss(d...))
-      if cb() == :stop
-        break
-      end
-    catch ex
-      if ex isa CYCLOPS_MyTrainSuppportModule.StopException
-        break
-      else
-        rethrow(ex)
-      end
-    end
-  end
-  avg = mean(lossrec)
-  println(string("Average loss this epoch: ", avg))
-
-  Tracker.data(avg)
-end
 
 macro myepochs(n, ex)
   return :(lossrecord = [];
@@ -173,13 +143,13 @@ macro myepochs(n, ex)
     lossrecord)
 end
 
-Flux.@epochs 1 mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+Flux.@epochs 1 CYCLOPS_MyTrainModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
 
-# This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
+#= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
 plot(Tracker.data(lossrecs[200:end]))
 gcf()
-
+=#
 
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
