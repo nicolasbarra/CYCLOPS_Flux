@@ -1,4 +1,4 @@
-module CYCLOPS_MyTrainModule
+module CYCLOPS_TrainingModule
 
 #= This module offers modificatied versions of Flux's train! function and @epochs macro to suit our needs better for our neural network, and the releveant supporting code. Specifically, we modify train! so that it stores the loss over the entire epoch (which is the same as the instance it is called) and returns the average loss over that epoch, as well as printing it to the console to keep track of training progress. We modify @epochs so that it is able to store the output of the modified train function in an array and then return that array. This is useful for plotting how the average loss changes across epochs of training. Additionally, it includes a feature that will halt the inputted number of epochs of training if there are more than 5 consecutive epochs during which the average loss over a particular epoch increases compared to the previous epoch. =#
 
@@ -55,4 +55,4 @@ macro myepochs(n, ex)
     lossrecord)
 end
 
-end  # module CYCLOPS_MyTrainModule
+end  # module CYCLOPS_TrainingModule
