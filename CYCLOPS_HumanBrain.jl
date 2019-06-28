@@ -10,6 +10,7 @@ import Random
 @everywhere include("CYCLOPS_SmoothModule_multi.jl")
 @everywhere include("CYCLOPS_TrainingModule.jl")
 @everywhere include("CYCLOPS_FluxAutoEncoderModule.jl")
+@everywhere cd(basedir * "/Downloads/Research")
 
 #= make all the columns (beginning at inputted column number) of a the DataFrame of type
 Float64, not String since they are Numbers =#
