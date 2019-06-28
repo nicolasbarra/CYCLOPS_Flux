@@ -1,5 +1,7 @@
 module CYCLOPS_FluxAutoEncoderModule
 
+#= This module provides a function that creates a balanced autoencoder using Flux. Specifically, this function creates a circular node autoencoder where it is possible to specificy the number of circular nodes and linear nodes in the bottleneck layer in addition to the input (and thus also output since this is an balanced autoencoder) dimensions. It then returns a model that reflects these inputs that has been created using Flux's Chain function. The bottleneck layer is the concatenation of the specified number of circular and/or linear layers. =#
+
 import Flux: Dense, Chain
 
 export makeautoencoder
