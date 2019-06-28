@@ -8,7 +8,7 @@ import Random
 @everywhere include("CYCLOPS_PrePostProcessModule.jl")
 @everywhere include("CYCLOPS_SeedModule.jl")
 @everywhere include("CYCLOPS_SmoothModule_multi.jl")
-@everywhere include("CYCLOPS_MyTrainModule.jl")
+@everywhere include("CYCLOPS_TrainingModule.jl")
 
 #= make all the columns (beginning at inputted column number) of a the DataFrame of type
 Float64, not String since they are Numbers =#
@@ -108,6 +108,35 @@ inner and outer arrays are one dimensional. This makes the array into an array o
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
+function makemodel(in_out_dim::Integer, n_circs::Integer, n_lins::Integer)
+    if n_circs == 0 && n_lins == 0
+        throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot both be zero."))
+    elseif n_circs < 0 || n_lins < 0
+        throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot be less than zero."))
+    end
+    encoder = Dense(in_out_dim, 2)
+    function circ(x)
+      length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
+      x./sqrt(sum(x .* x))
+    end
+    lin = Dense(2, 2)
+    function bottleneck(n_circs1, n_lins1)
+        if n_circs1 == 0
+            x -> reduce(vcat, Iterators.repeated(lin(x), n_lins1))
+        elseif n_lins1 == 0
+            x -> reduce(vcat, Iterators.repeated(circ(x), n_circs1))
+        else
+            x -> vcat(reduce(vcat, Iterators.repeated(circ(x), n_circs1)), reduce(vcat, Iterators.repeated(lin(x), n_lins1)))
+        end
+    end
+    decoder = Dense(n_circs*2 + n_lins*2, in_out_dim)
+    model = Chain(encoder, bottleneck(n_circs, n_lins), decoder)
+
+    model
+end
+
+model = makemodel(outs1, 0, 1)
+#=
 encoder = Dense(outs1, 2)
 function circ(x)
   length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
@@ -115,7 +144,8 @@ function circ(x)
 end
 lin = Dense(2, 2)
 decoder = Dense(4, outs1)
-
+model = Chain(encoder, x -> vcat(circ(x), lin(x)), decoder)
+=#
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
 
@@ -124,25 +154,23 @@ Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
-model = Chain(encoder, x -> cat(circ(x), lin(x); dims = 1), decoder)
-
 loss(x) = Flux.mse(model(x), x)
 
-lossrecord = CYCLOPS_MyTrainModule.@myepochs 4000 CYCLOPS_MyTrainModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+lossrecord = CYCLOPS_TrainingModule.@myepochs 1 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
 
-# This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
+#= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
 plot(lossrecord[1:end])
 gcf()
-
-
+=#
+#=
 estimated_phaselist = extractphase(norm_seed_data1, model)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
 estimated_phaselist1 = estimated_phaselist[timestamped_samples]
 
 shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
-
+=#
 #=
 # This code replicates the first figure in the paper.
 
@@ -160,7 +188,7 @@ suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
 =#
 
-#  The below prints to the console the relevent error statistics using the true times that we know.
+#= The below prints to the console the relevent error statistics using the true times that we know.
 errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
 hrerrors = (12/pi) * abs.(errors)
 println("Error from true times: ")
@@ -168,3 +196,4 @@ println(string("Mean: ", mean(hrerrors)))
 println(string("Median: ", median(hrerrors)))
 println(string("Standard Deviation: ", sqrt(var(hrerrors))))
 println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
+=#
