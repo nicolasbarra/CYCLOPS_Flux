@@ -1,5 +1,7 @@
 module CYCLOPS_FluxAutoEncoderModule
 
+import Flux: Dense, Chain
+
 export makeautoencoder
 
 function makeautoencoder(in_out_dim::Integer, n_circs::Integer, n_lins::Integer)
