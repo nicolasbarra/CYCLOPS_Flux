@@ -18,14 +18,14 @@ function makeautoencoder(in_out_dim::Integer, n_circs::Integer, n_lins::Integer)
       length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
       x./sqrt(sum(x .* x))
     end
-    lin = Dense(1, 1)
+    lin = Dense(1, 1, x -> x)
     function encodetobottleneck(n_circs1, n_lins1)
         if n_circs1 == 0
-            x -> reduce(vcat, Iterators.repeated(encoderlin(lin(x)), n_lins1))
+            x -> reduce(vcat, Iterators.repeated(lin(encoderlin(x)), n_lins1))
         elseif n_lins1 == 0
-            x -> reduce(vcat, Iterators.repeated(encodercirc(circ(x)), n_circs1))
+            x -> reduce(vcat, Iterators.repeated(circ(encodercirc(x)), n_circs1))
         else
-            x -> vcat(reduce(vcat, Iterators.repeated(encodercirc(circ(x)), n_circs1)), reduce(vcat, Iterators.repeated(encoderlin(lin(x)), n_lins1)))
+            x -> vcat(reduce(vcat, Iterators.repeated(circ(encodercirc(x)), n_circs1)), reduce(vcat, Iterators.repeated(lin(encoderlin(x)), n_lins1)))
         end
     end
     decoder = Dense(n_circs*2 + n_lins, in_out_dim)
