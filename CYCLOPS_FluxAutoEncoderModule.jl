@@ -34,4 +34,19 @@ function makeautoencoder(in_out_dim::Integer, n_circs::Integer, n_lins::Integer)
     model
 end
 
+# extracts the phase angles from the model for analysis
+function extractphase(data_matrix, model, n_circs::Integer)
+    points = size(data_matrix, 2)
+    phases = zeros(n_circs, points)
+    base = 0
+    for circ in 1:n_circs
+        for n in 1:points
+            phases[circ, n] = Tracker.data(atan(model[1](data_matrix[:, n])[2 + base], model[1](data_matrix[:, n])[1 + base]))
+        end
+        base += 2
+    end
+
+    phases
+end
+
 end  # module CYCLOPS_FluxAutoEncoderModule
