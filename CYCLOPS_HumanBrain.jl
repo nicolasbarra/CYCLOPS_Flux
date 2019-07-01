@@ -34,17 +34,6 @@ function findNAtime(df)
   r
 end
 
-# extracts the phase angles from the model for analysis
-function extractphase(data_matrix, model)
-    points = size(data_matrix, 2)
-    phases = zeros(points)
-    for n in 1:points
-        phases[n] = Tracker.data(atan(model[1:2](data_matrix[:, n])[2], model[1:2](data_matrix[:, n])[1]))
-    end
-
-    phases
-end
-
 Frac_Var = 0.85  # Set Number of Dimensions of SVD to maintain this fraction of variance
 DFrac_Var = 0.03  #= Set Number of Dimensions of SVD so that incremetal fraction of
 variance of var is at least this much=#
