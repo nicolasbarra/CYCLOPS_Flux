@@ -99,7 +99,10 @@ inner and outer arrays are one dimensional. This makes the array into an array o
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
-model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder(outs1, 0, 1)
+n_circs = 2  # set the number of circular layers in bottleneck layer
+n_lins = 1  # set the number of linear layers in bottleneck layer
+lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
+model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder(outs1, n_circs, n_lins, lin_dim)
 
 #=
 encoder = Dense(outs1, 2)
@@ -121,7 +124,7 @@ Tracker.@grad function circ(x)
 
 loss(x) = Flux.mse(model(x), x)
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 1 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
+lossrecord = CYCLOPS_TrainingModule.@myepochs 1000 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Descent(0.01))
 
 #= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
@@ -129,7 +132,7 @@ plot(lossrecord[1:end])
 gcf()
 =#
 #=
-estimated_phaselist = extractphase(norm_seed_data1, model)
+estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data1, model, n_circs)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
 estimated_phaselist1 = estimated_phaselist[timestamped_samples]
