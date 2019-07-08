@@ -69,7 +69,7 @@ function getseed_mca(data::Array{Any, 2}, probe_list, maxcv, mincv, minmean, blu
 	seed_symbols, seed_data
 end
 
-function getseed_homologuesymbol(data::Array{Any, 2}, symbol_list, maxcv, mincv, minmean, blunt)
+function getseed_homologuesymbol(data_data::Array{Any, 2}, symbol_list, maxcv, mincv, minmean, blunt)
 	data_symbols = data[2:end, 2]
 	data_probes = data[2:end, 1]
 
