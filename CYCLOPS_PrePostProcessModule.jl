@@ -7,7 +7,16 @@ using StatsBase: fit, zscore
 using MultivariateStats: outdim, transform, llsq
 using Distributions: sample, var, FDist, cdf
 
-export getEigengenes, get_N_Eigengenes, PCA_transform_seed_data, repeat_PCA_transform_data, row_shuffle, Bonferroni_adjust, best_shift_cos, best_shift_cos2, cosinor_stats, multicore_cosinor_stats, compile_multicore_cosinor_stats
+export makefloat!, getEigengenes, get_N_Eigengenes, PCA_transform_seed_data, repeat_PCA_transform_data, row_shuffle, Bonferroni_adjust, best_shift_cos, best_shift_cos2, cosinor_stats, multicore_cosinor_stats, compile_multicore_cosinor_stats
+
+#= make all the columns of a the DataFrame of type Float64, not String, since they are Numbers =#
+function makefloat!(df)
+    for col in 1:size(df)[2]
+        if typeof(df[:, col]) == Array{String,1}
+            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
+        end
+    end
+end
 
 function getEigengenes(numeric_data::Array{Float64, 2}, fraction_var::Number, dfrac_var::Number, maxeig::Number)
     svd_obj = svd(numeric_data)
