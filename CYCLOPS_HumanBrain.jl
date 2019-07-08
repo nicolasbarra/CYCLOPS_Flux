@@ -41,8 +41,7 @@ N_best = 10  # Number of random initial conditions to try for each optimization
 total_background_num = 10  #= Number of background runs for global background refrence
 distribution (bootstrap). For real runs, this should be much higher. =#
 
-seed_homologues1 = CSV.read("Human_UbiquityCyclers.csv")
-homologue_symbol_list1 = seed_homologues1[1:end, 2]
+homologue_symbol_list = CSV.read("Human_UbiquityCyclers.csv")[1:end, 2]
 
 Seed_MinCV = 0.14
 Seed_MaxCV = .7
@@ -84,7 +83,7 @@ is slightly different in new version versus old (42.88460199564358 here versus
 from the CSV it is automatically rounded after a certain number of decimal points. =#
 
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
-seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list1, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
+seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
