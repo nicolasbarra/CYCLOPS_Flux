@@ -10,7 +10,7 @@ homologue_symbol_list = CSV.read("LungCyclerHomologues.csv")[2]
 fullnonseed_data_laval.label = 1
 fullnonseed_data_grng.label = 2
 
-#  eliminate duplicate rows
+#  eliminate duplicate columns
 deletecols!(fullnonseed_data_grng, [2, 3])
 
 #  join the the DataFrames
