@@ -2,9 +2,18 @@ module CYCLOPS_SeedModule
 
 using Statistics: mean, std
 
-export clean_data!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
+export makefloat!, cleandata!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
 
-function clean_data!(data::Array{Float64, 2}, bluntpercent)
+#= make all the columns of a the DataFrame of type Float64, not String, since they are Numbers =#
+function makefloat!(df)
+    for col in 1:size(df)[2]
+        if typeof(df[:, col]) == Array{String,1}
+            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
+        end
+    end
+end
+
+function cleandata!(data::Array{Float64, 2}, bluntpercent)
 	ngenes, nsamples = size(data)
 	nfloor = Int(1 + floor((1 - bluntpercent) * nsamples))
 	nceiling = Int(ceil(bluntpercent*nsamples))
@@ -25,7 +34,7 @@ function getseed(data::Array{Any, 2}, symbol_list, maxcv, mincv, minmean, blunt)
 	data_symbols = data[2:end, 2]
 	data_data = data[2:end, 4:end]
 	data_data = Array{Float64}(data_data)
-	data_data = clean_data!(data_data, blunt)
+	data_data = cleandata!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
 	gene_means = mean(data_data,2)
@@ -50,7 +59,7 @@ function getseed_mca(data::Array{Any, 2}, probe_list, maxcv, mincv, minmean, blu
 
 	data_data = data[2:end, 4:end]
 	data_data = Array{Float64}(data_data)
-	data_data = clean_data!(data_data, blunt)
+	data_data = cleandata!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
 	gene_means = mean(data_data, 2)
@@ -75,7 +84,7 @@ function getseed_homologuesymbol(data::Array{Any, 2}, symbol_list, maxcv, mincv,
 
 	data_data = data[2:end, 3:end]
 	data_data = Array{Float64}(data_data)
-	data_data = clean_data!(data_data, blunt)
+	data_data = cleandata!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
 	gene_means = mean(data_data, 2)
@@ -100,7 +109,7 @@ function getseed_homologueprobe(data::Array{Any, 2}, probe_list, maxcv, mincv, m
 
 	data_data = data[2:end, 3:end]
 	data_data = Array{Float64}(data_data)
-	data_data = clean_data!(data_data, blunt)
+	data_data = cleandata!(data_data, blunt)
 	ngenes,namples = size(data_data)
 
 	gene_means = mean(data_data, 2)
@@ -146,7 +155,7 @@ end
 
 function getseed_homologuesymbol_brain(data_data, symbol_list, data_symbols, maxcv, mincv, minmean, blunt)
 	data_data = Array{Float64}(data_data)
-	data_data = clean_data!(data_data, blunt)
+	data_data = cleandata!(data_data, blunt)
 	ngenes, namples = size(data_data)
 
 	gene_means = vec(mean(data_data, dims=2))
