@@ -12,10 +12,9 @@ import Random
 @everywhere include("CYCLOPS_FluxAutoEncoderModule.jl")
 @everywhere cd(basedir * "/Downloads/Research")
 
-#= make all the columns (beginning at inputted column number) of a the DataFrame of type
-Float64, not String since they are Numbers =#
-function makefloat!(x::Integer, df)
-    for col in x:size(df)[2]
+#= make all the columns of a the DataFrame of type Float64, not String since they are Numbers =#
+function makefloat!(df)
+    for col in 1:size(df)[2]
         if typeof(df[:, col]) == Array{String,1}
             df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
         end
