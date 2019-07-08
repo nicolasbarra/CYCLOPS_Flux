@@ -12,7 +12,7 @@ import Random
 @everywhere include("CYCLOPS_FluxAutoEncoderModule.jl")
 @everywhere cd(basedir * "/Downloads/Research")
 
-# Find the samples that have no time stamp so you can remove them.
+# Find the samples that have no integer time stamp (so their type will be string) so you can remove them.
 function findNAtime(df)
   r = []
   for row in 1:length(df)
