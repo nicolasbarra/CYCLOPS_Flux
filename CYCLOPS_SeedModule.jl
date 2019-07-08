@@ -2,16 +2,7 @@ module CYCLOPS_SeedModule
 
 using Statistics: mean, std
 
-export makefloat!, cleandata!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
-
-#= make all the columns of a the DataFrame of type Float64, not String, since they are Numbers =#
-function makefloat!(df)
-    for col in 1:size(df)[2]
-        if typeof(df[:, col]) == Array{String,1}
-            df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
-        end
-    end
-end
+export cleandata!, getseed, getseed_mca, getseed_homologuesymbol, getseed_homologueprobe, dispersion!, dispersion, getseed_homologuesymbol_brain
 
 function cleandata!(data::Array{Float64, 2}, bluntpercent)
 	ngenes, nsamples = size(data)
