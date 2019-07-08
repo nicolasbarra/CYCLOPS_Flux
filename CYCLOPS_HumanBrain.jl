@@ -22,7 +22,7 @@ function makefloat!(x::Integer, df)
     end
 end
 
-# find the samples that have no time stamp so you can remove them
+# Find the samples that have no time stamp so you can remove them
 function findNAtime(df)
   r = []
   for row in 1:length(df)
