@@ -9,7 +9,7 @@ using Distributions: sample, var, FDist, cdf
 
 export makefloat!, getEigengenes, get_N_Eigengenes, PCA_transform_seed_data, repeat_PCA_transform_data, row_shuffle, Bonferroni_adjust, best_shift_cos, best_shift_cos2, cosinor_stats, multicore_cosinor_stats, compile_multicore_cosinor_stats
 
-#= make all the columns of a the DataFrame of type Float64, not String, since they are Numbers =#
+#= make all the columns of a DataFrame of type Float64, not String, since they are Numbers =#
 function makefloat!(df)
     for col in 1:size(df)[2]
         if typeof(df[:, col]) == Array{String,1}
