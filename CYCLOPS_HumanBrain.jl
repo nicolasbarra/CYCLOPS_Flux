@@ -83,7 +83,7 @@ is slightly different in new version versus old (42.88460199564358 here versus
 from the CSV it is automatically rounded after a certain number of decimal points. =#
 
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
-seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(fullnonseed_data, homologue_symbol_list, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
+seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(alldata_data, homologue_symbol_list, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
@@ -98,8 +98,8 @@ inner and outer arrays are one dimensional. This makes the array into an array o
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
-n_circs = 2  # set the number of circular layers in bottleneck layer
-n_lins = 1  # set the number of linear layers in bottleneck layer
+n_circs = 1  # set the number of circular layers in bottleneck layer
+n_lins = 0  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder(outs1, n_circs, n_lins, lin_dim)
 
