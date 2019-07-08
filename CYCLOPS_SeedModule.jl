@@ -144,7 +144,7 @@ function dispersion(data::Array{Float64, 2})
 	ndata
 end
 
-function getseed_homologuesymbol_brain(data_data, symbol_list, maxcv, mincv, minmean, blunt)
+function getseed_homologuesymbol_brain(data_data, symbol_list, data_symbols, maxcv, mincv, minmean, blunt)
 	data_data = Array{Float64}(data_data)
 	data_data = clean_data!(data_data, blunt)
 	ngenes, namples = size(data_data)
