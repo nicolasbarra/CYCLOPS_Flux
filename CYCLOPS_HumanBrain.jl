@@ -1,4 +1,4 @@
-using Flux, CSV, Statistics, Distributed, Juno, PyPlot, BSON
+using Flux, CSV, Statistics, Distributed, Juno, PyPlot, BSON, Revise
 
 import Random
 
@@ -53,7 +53,7 @@ not just the other headers that are there =#
 alldata_samples = alldata_samples[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
-CYCLOPS_SeedModule.makefloat!(alldata_data)
+CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
 alldata_data = convert(Matrix, alldata_data)
 
 n_samples = length(alldata_times)
@@ -88,21 +88,11 @@ inner and outer arrays are one dimensional. This makes the array into an array o
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
-n_circs = 1  # set the number of circular layers in bottleneck layer
-n_lins = 0  # set the number of linear layers in bottleneck layer
+n_circs = 2  # set the number of circular layers in bottleneck layer
+lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
-model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder(outs1, n_circs, n_lins, lin_dim)
+model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 
-#=
-encoder = Dense(outs1, 2)
-function circ(x)
-  length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
-  x./sqrt(sum(x .* x))
-end
-lin = Dense(2, 2)
-decoder = Dense(4, outs1)
-model = Chain(encoder, x -> vcat(circ(x), lin(x)), decoder)
-=#
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
 
@@ -120,15 +110,15 @@ close()
 plot(lossrecord[1:end])
 gcf()
 =#
-#=
+
 estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data1, model, n_circs)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
 estimated_phaselist1 = estimated_phaselist[timestamped_samples]
 
 shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
-=#
-#=
+
+
 # This code replicates the first figure in the paper.
 
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
@@ -143,7 +133,7 @@ xticks(xlabp, xlabs)
 yticks(ylabp, ylabs)
 suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
-=#
+
 
 #= The below prints to the console the relevent error statistics using the true times that we know.
 errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)

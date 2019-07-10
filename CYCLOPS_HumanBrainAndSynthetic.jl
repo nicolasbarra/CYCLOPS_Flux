@@ -42,6 +42,11 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
+fullnonseed_data_syn = CSV.read("Annotated_Unlogged_BA11Data_add3.csv")
+#  eliminate duplicate columns
+deletecols!(fullnonseed_data_syn, [2, 3])
+#  join the the DataFrames
+fullnonseed_data = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1)
 alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[3:end, 2]
 alldata_subjects = fullnonseed_data[1, 4:end]
@@ -53,7 +58,7 @@ not just the other headers that are there =#
 alldata_samples = alldata_samples[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
-CYCLOPS_SeedModule.makefloat!(alldata_data)
+CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
 alldata_data = convert(Matrix, alldata_data)
 
 n_samples = length(alldata_times)
@@ -93,16 +98,6 @@ n_lins = 0  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder(outs1, n_circs, n_lins, lin_dim)
 
-#=
-encoder = Dense(outs1, 2)
-function circ(x)
-  length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
-  x./sqrt(sum(x .* x))
-end
-lin = Dense(2, 2)
-decoder = Dense(4, outs1)
-model = Chain(encoder, x -> vcat(circ(x), lin(x)), decoder)
-=#
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
 

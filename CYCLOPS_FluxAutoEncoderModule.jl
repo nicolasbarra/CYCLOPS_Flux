@@ -5,30 +5,114 @@ module CYCLOPS_FluxAutoEncoderModule
 import Flux: Dense, Chain
 import Flux.Tracker: data
 
-export makeautoencoder
-
+export makeautoencoder_naive
+# TODO: Change exports when make is fixed.
+#=
 function makeautoencoder(in_out_dim::Integer, n_circs::Integer, n_lins::Integer, lin_dim::Integer)
     if n_circs == 0 && n_lins == 0
         throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot both be zero."))
     elseif n_circs < 0 || n_lins < 0
         throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot be less than zero."))
+    elseif lin_dim < 1
+        throw(ArgumentError("The input/output dimensions of the linear node(s) in the bottleneck layer must be at least 1."))
     end
     function circ(x)
       length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
       x./sqrt(sum(x .* x))
     end
-    lin = Dense(n_lins, n_lins, x -> x)
-    function encodetobottleneck(n_circs1, n_lins1)
-        if n_circs1 == 0
-            x -> reduce(vcat, Iterators.repeated(lin(Dense(in_out_dim, lin_dim)(x)), n_lins1))
-        elseif n_lins1 == 0
-            x -> reduce(vcat, Iterators.repeated(circ(Dense(in_out_dim, 2)(x)), n_circs1))
-        else
-            x -> vcat(reduce(vcat, Iterators.repeated(circ(Dense(in_out_dim, 2)(x)), n_circs1)), reduce(vcat, Iterators.repeated(lin(Dense(in_out_dim, lin_dim)(x)), n_lins1)))
-        end
+    makecircs(in_out_dim1, n_circs1) = y -> vcat( collect(Iterators.repeated(circ(y), n_circs1)))
+    lin = Dense(lin_dim, lin_dim, x -> x)
+    makelins(in_out_dim1, lin_dim1, n_lins1) = x -> vcat( collect(Iterators.repeated(lin(Dense(in_out_dim1, lin_dim1)(x)), n_lins1)))
+    if n_circs == 0
+        encodetobottleneck = makelins(in_out_dim, lin_dim, n_lins)
+    elseif n_lins == 0
+        encodetobottleneckprep = makecircs(in_out_dim, n_circs)
+        encodetobottleneck = x -> encodetobottleneckprep(Dense(in_out_dim1, 2)(x))
+    else
+        encodetobottleneck = vcat(makecircs(in_out_dim, n_circs), makelins(in_out_dim, lin_dim, n_lins))
     end
     decoder = Dense(n_circs*2 + n_lins, in_out_dim)
-    model = Chain(encodetobottleneck(n_circs, n_lins), decoder)
+    model = Chain(encodetobottleneck(x)[1], decoder)
+
+    model
+end
+=#
+
+function makeautoencoder_naive(in_out_dim::Integer, n_circs::Integer, lin::Bool, lin_dim::Integer)
+    if n_circs == 0 && lin == false
+        throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot both be zero."))
+    elseif n_circs < 0
+        throw(ArgumentError("The number of circular nodes in the bottleneck cannot be less than zero."))
+    elseif lin == true && lin_dim < 1
+        throw(ArgumentError("The input/output dimensions of the linear node(s) in the bottleneck layer must be at least 1."))
+    end
+    function circ(x)
+      length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
+      x./sqrt(sum(x .* x))
+    end
+    if n_circs == 0
+        println("linear layer autoencoder being created")
+        encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+        encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+        encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+        encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+        encodetobottleneck = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+    elseif lin == false
+        if n_circs == 1
+            println("single circular layer autoencoder being created")
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck = Chain(Dense(in_out_dim, 2), circ)
+        elseif n_circs == 2
+            println("double circular layer autoencoder being created")
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneck2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneck(x) = vcat(encodetobottleneck1(x), encodetobottleneck2(x))
+        else
+            println("triple circular layer autoencoder being created")
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneck2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneck3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneck(x) = vcat(encodetobottleneck1(x), encodetobottleneck2(x), encodetobottleneck3(x))
+        end
+    else
+        if n_circs == 1
+            println("single circular layer with linear layer autoencoder being created")
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck(x) = vcat(encodetobottleneckcirc(x), encodetobottlenecklin(x))
+        elseif n_circs == 2
+            println("double circular layer with linear layer autoencoder being created")
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck(x) = vcat(encodetobottleneckcirc1(x), encodetobottleneckcirc2(x), encodetobottlenecklin(x))
+        else
+            println("triple circular layer with linear layer autoencoder being created")
+            encodetobottleneckcirc1 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc2 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottleneckcirc3 = Chain(Dense(in_out_dim, 2), circ)
+            encodetobottlenecklin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+            encodetobottleneck(x) = vcat(encodetobottleneckcirc1(x), encodetobottleneckcirc2(x), encodetobottleneckcirc3(x), encodetobottlenecklin(x))
+        end
+    end
+    decoder = Dense(n_circs*2 + lin, in_out_dim)
+    model = Chain(encodetobottleneck, decoder)
 
     model
 end
