@@ -6,7 +6,7 @@ import Flux: Dense, Chain
 import Flux.Tracker: data
 
 export makeautoencoder_naive
-# TODO: Change exports when make is fixed.
+# TODO: Change exports when makeautoencoder is fixed.
 #=
 function makeautoencoder(in_out_dim::Integer, n_circs::Integer, n_lins::Integer, lin_dim::Integer)
     if n_circs == 0 && n_lins == 0
