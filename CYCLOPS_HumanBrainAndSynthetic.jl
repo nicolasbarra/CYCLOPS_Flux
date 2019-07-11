@@ -58,21 +58,17 @@ alldata_samples = alldata_samples[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
 CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
-rones = [1 for i in 1:size(alldata_data, 2)]
-rzeros = [0 for i in 1:size(alldata_data, 2)]
-push!(alldata_data, rones)
-push!(alldata_data, rzeros)
-joincol = [i for i in 1:size(alldata_data, 1)]
-alldata_data[:joincol] = joincol
+push!(alldata_data, ones(size(alldata_data, 2)))
+push!(alldata_data, zeros(size(alldata_data, 2)))
+joincolarr = [i for i in 1:size(alldata_data, 1)]
+alldata_data[:joincol] = joincolarr
 
-alldata_data_syn = fullnonseed_data_syn[2:end, 4:end]
+alldata_data_syn = fullnonseed_data_syn[3:end, 2:end]
 CYCLOPS_PrePostProcessModule.makefloat!(alldata_data_syn)
-rzeros_syn = [0 for i in 1:size(alldata_data_syn, 2)]
-rones_syn = [1 for i in 1:size(alldata_data_syn, 2)]
-push!(alldata_data_syn, rzeros_syn)
-push!(alldata_data_syn, rones_syn)
-joincol = [i for i in 1:size(alldata_data_syn, 1)]
-alldata_data_syn[:joincol] = joincol
+push!(alldata_data_syn, zeros(size(alldata_data_syn, 2)))
+push!(alldata_data_syn, ones(size(alldata_data_syn, 2)))
+joincolarr_syn = [i for i in 1:size(alldata_data_syn, 1)]
+alldata_data_syn[:joincol] = joincolarr_syn
 
 alldata_data_joined = join(alldata_data, alldata_data_syn, on = :joincol, makeunique = true)
 deletecols!(alldata_data_joined, :joincol)
@@ -98,12 +94,6 @@ from the CSV it is automatically rounded after a certain number of decimal point
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(alldata_data_joined, homologue_symbol_list, alldata_symbols, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
-
-# TODO: Figure out why this is needed below
-#=
-outs1 = 5
-norm_seed_data1 = norm_seed_data1[1:5, :]
-=#
 
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
