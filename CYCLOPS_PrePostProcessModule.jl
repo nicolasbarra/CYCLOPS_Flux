@@ -20,7 +20,7 @@ end
 
 function getEigengenes(numeric_data::Array{Float64, 2}, fraction_var::Number, dfrac_var::Number, maxeig::Number)
     svd_obj = svd(numeric_data)
-    expvar = cumsum(svd_obj.U.^2, dims = 1) / sum(svd_obj.U.^2)
+    expvar = cumsum(svd_obj.S.^2, dims = 1) / sum(svd_obj.S.^2)
     ReductionDim1 = 1 + length(expvar[expvar .<= fraction_var])
     vardif = diff(expvar, dims = 1)
     ReductionDim2 = 1 + length(vardif[vardif .>= dfrac_var])

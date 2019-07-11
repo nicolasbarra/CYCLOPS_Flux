@@ -77,18 +77,12 @@ seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(all
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
-# TODO: Figure out why this is needed below
-#=
-outs1 = 5
-norm_seed_data1 = norm_seed_data1[1:5, :]
-=#
-
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
 norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
-n_circs = 2  # set the number of circular layers in bottleneck layer
+n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 model = CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
