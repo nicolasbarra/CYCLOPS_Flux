@@ -43,18 +43,15 @@ Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
 fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_t10.csv")
+CSV.read("Annotated_Unlogged_BA11Data_r50.csv")
 deletecols!(fullnonseed_data_syn, [2, 3])
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
 alldata_symbols = fullnonseed_data_joined[3:end, 2]
 alldata_subjects = fullnonseed_data_joined[1, 4:end]
 alldata_times = fullnonseed_data_joined[2, 4:end]
-# first get the head of the dataframe which has the samples as array of Strings
-alldata_samples = String.(names(fullnonseed_data_joined))
-#= then extract from that array only the headers that actually correspond with samples and
-not just the other headers that are there =#
-alldata_samples = alldata_samples[4:end]
+# first get the head of the dataframe which has the samples as array of Strings and then extract from that array only the headers that actually correspond with samples and not just the other headers that are there
+alldata_samples = String.(names(fullnonseed_data_joined))[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
 CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)

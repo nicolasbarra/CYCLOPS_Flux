@@ -46,11 +46,8 @@ alldata_probes = fullnonseed_data[3:end, 1]
 alldata_symbols = fullnonseed_data[3:end, 2]
 alldata_subjects = fullnonseed_data[1, 4:end]
 alldata_times = fullnonseed_data[2, 4:end]
-# first get the head of the dataframe which has the samples as array of Strings
-alldata_samples = String.(names(fullnonseed_data))
-#= then extract from that array only the headers that actually correspond with samples and
-not just the other headers that are there =#
-alldata_samples = alldata_samples[4:end]
+# first get the head of the dataframe which has the samples as array of Strings. Then extract from that array only the headers that actually correspond with samples and not just the other headers that are there.
+alldata_samples = String.(names(fullnonseed_data))[4:end]
 
 alldata_data = fullnonseed_data[3:end, 4:end]
 CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
