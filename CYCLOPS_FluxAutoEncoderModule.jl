@@ -166,7 +166,57 @@ function makeautoencoder_naive(in_out_dim::Integer, n_circs::Integer, lin::Bool,
 
     model
 end
+#=
+function makeautoencoder_string(in_out_dim::Integer, n_circs::Integer, lin::Bool, lin_dim::Integer)
+    if n_circs == 0 && lin == false
+        throw(ArgumentError("The number of circular nodes and linear layers in the bottleneck cannot both be zero."))
+    elseif n_circs < 0
+        throw(ArgumentError("The number of circular nodes in the bottleneck cannot be less than zero."))
+    elseif lin == true && lin_dim < 1
+        throw(ArgumentError("The input/output dimensions of the linear node(s) in the bottleneck layer must be at least 1."))
+    end
+    function circ(x)
+      length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
+      x./sqrt(sum(x .* x))
+    end
+    if n_circs == 0
+        encodetobottleneck = "Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x)"
+    elseif lin == false
+        for i in 1:n_circs
+            @eval $(Symbol("encoderbottle_$i")) = Chain(Dense($in_out_dim, 2), $circ)
+        end
+        modelmakerstring = "y -> vcat(u)"
+        u = "encoderbottle_1(y)"
+        if n_circs > 1
+            for i in 2:n_circs
+                u = u * ", encoderbottle_$i(y)"
+            end
+        end
+        modelmakerstring = modelmakerstring[1:findfirst(isequal('u'), modelmakerstring) - 1] * u * modelmakerstring[findfirst(isequal('u'), modelmakerstring) + 1:end]
 
+        encodetobottleneck = eval(Meta.parse(modelmakerstring))
+    else
+        for i in 1:n_circs
+            @eval $(Symbol("encoderbottle_$i")) = Chain(Dense($in_out_dim, 2), $circ)
+        end
+        encoderbottle_lin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+        modelmakerstring = "y -> vcat(u, encoderbottle_lin(y))"
+        u = "encoderbottle_1(y)"
+        if n_circs > 1
+            for i in 2:n_circs
+                u = u * ", encoderbottle_$i(y)"
+            end
+        end
+        modelmakerstring = modelmakerstring[1:findfirst(isequal('u'), modelmakerstring)-1] * u * modelmakerstring[findfirst(isequal('u'), modelmakerstring)+1:end]
+
+        encodetobottleneck = eval(Meta.parse(modelmakerstring))
+    end
+    decoder = Dense(n_circs*2 + lin, in_out_dim)
+    model = Chain(encodetobottleneck, decoder)
+
+    model
+end
+=#
 # extracts the phase angles from the model for analysis
 function extractphase(data_matrix, model, n_circs::Integer)
     points = size(data_matrix, 2)

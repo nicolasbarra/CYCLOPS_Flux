@@ -1,4 +1,4 @@
-using Flux, CSV, Statistics, Distributed, Juno, PyPlot, BSON, Revise, DataFrames
+using Flux, CSV, Statistics, Distributed, Juno, PyPlot, BSON, Revise
 
 import Random
 
@@ -42,18 +42,14 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
-fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_r50.csv")
-deletecols!(fullnonseed_data_syn, [2, 3])
-fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
-alldata_probes = fullnonseed_data_joined[3:end, 1]
-alldata_symbols = fullnonseed_data_joined[3:end, 2]
-alldata_subjects = fullnonseed_data_joined[1, 4:end]
-alldata_times = fullnonseed_data_joined[2, 4:end]
-# first get the head of the dataframe which has the samples as array of Strings and then extract from that array only the headers that actually correspond with samples and not just the other headers that are there
-alldata_samples = String.(names(fullnonseed_data_joined))[4:end]
+alldata_probes = fullnonseed_data[3:end, 1]
+alldata_symbols = fullnonseed_data[3:end, 2]
+alldata_subjects = fullnonseed_data[1, 4:end]
+alldata_times = fullnonseed_data[2, 4:end]
+# first get the head of the dataframe which has the samples as array of Strings. Then extract from that array only the headers that actually correspond with samples and not just the other headers that are there.
+alldata_samples = String.(names(fullnonseed_data))[4:end]
 
-alldata_data = fullnonseed_data_joined[3:end, 4:end]
+alldata_data = fullnonseed_data[3:end, 4:end]
 CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
 alldata_data = convert(Matrix, alldata_data)
 
@@ -77,29 +73,21 @@ from the CSV it is automatically rounded after a certain number of decimal point
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(alldata_data, homologue_symbol_list, alldata_symbols, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 in_out_dims = size(seed_data1, 1)
-batchsize_1 = size(seed_data1, 2)
-halfones = ones(trunc(Int, (batchsize_1 / 2)))
-halfzeros = zeros(trunc(Int, (batchsize_1 / 2)))
-seed_data2 = vcat(seed_data1, vcat(halfones, halfzeros)', vcat(halfzeros, halfones)')
-in_out_dims_oh = size(seed_data2, 1)
-seed_data3 = mapslices(x -> [x], seed_data2, dims=1)[:]
 #outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
-#norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
+seed_data2 = mapslices(x -> [x], seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
 n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
-
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
     x./sqrt(sum(x .* x))
-  end
-
-model = Chain(Dense(in_out_dims_oh, in_out_dims), Dense(in_out_dims, 2), circ, Dense(2, in_out_dims), Dense(in_out_dims, in_out_dims_oh)) #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
+end
+model = Chain(Dense(in_out_dims, 2), circ, Dense(2, in_out_dims)) #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
@@ -109,20 +97,16 @@ Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
-function loss(x)
-  y = x .* vcat(ones(in_out_dims), zeros(in_out_dims_oh - in_out_dims))
+loss(x) = Flux.mse(model(x), x)
 
-  Flux.mse(model(y), y)
-end
-
-lossrecord = CYCLOPS_TrainingModule.@myepochs 1000 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(seed_data3), Descent(0.01))
+lossrecord = CYCLOPS_TrainingModule.@myepochs 1000 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(seed_data2), Descent(0.01))
 
 #= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
 plot(lossrecord[1:end])
 gcf()
 =#
-# this is going to not work
+
 estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(seed_data1, model, n_circs)
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
