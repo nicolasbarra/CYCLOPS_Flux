@@ -78,54 +78,42 @@ seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(all
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
+n_batches = 2
 batchsize_1 = size(norm_seed_data1, 2)
 halfones = ones(trunc(Int, (batchsize_1 / 2)))
 halfzeros = zeros(trunc(Int, (batchsize_1 / 2)))
 norm_seed_data2 = vcat(norm_seed_data1, vcat(halfones, halfzeros)', vcat(halfzeros, halfones)')
 outs2 = size(norm_seed_data2, 1)
-norm_seed_data3 = mapslices(x -> [x], norm_seed_data2, dims=1)[:]
 
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
-#norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
+norm_seed_data3 = mapslices(x -> [x], norm_seed_data2, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
 n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 
+
+
+en_layer1 = Dense(outs2, outs1)
+en_layer2 = Dense(outs1, 2)
+
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
     x./sqrt(sum(x .* x))
 end
 
-en_layer1d = Dense(outs2, outs1)
-en_layer2d = Dense(outs1, 2)
-de_layer1d = Dense(2, outs1)
+skipmatrix = zeros(outs2, n_batches)
+skipmatrix[6, 1] = 1
+skipmatrix[7, 2] = 1
+skiplayer(x) = skipmatrix'*x
 
-a = zeros(7, 2)
-a[6, 1] = 1
-a[7, 2] = 1
-skiplayer(x) = transpose(a)*x
+de_layer1 = Dense(2, outs1)
 
-model = Chain(x -> cat(Chain(en_layer1d, en_layer2d, circ, de_layer1d)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
-#=
-en_layer1h = CYCLOPS_FluxAutoEncoderModule.SkipDense(7, 2)
+model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
 
-
-
-en_layer1 = x -> vcat(en_layer1d(x), en_layer1h(Tracker.data(x[(outs1 + 1):end]))
-
-en_layer2d = Dense(outs1, 2)
-en_layer2h = CYCLOPS_FluxAutoEncoderModule.SkipDense(2, 2)
-en_layer2 = x -> vcat(en_layer2d(x), en_layer2h(Tracker.data(x[(outs1 + 1):end]))
-
-c_layer = x -> vcat(circ(x), )
-de_layer1d = Dense(2, outs1)
-de_layer2d = Dense(outs1, outs2)
-model = Chain(en_layer1d, en_layer2d, circ, de_layer1d, de_layer2d)
 #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
-=#
 
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
@@ -137,7 +125,7 @@ Tracker.@grad function circ(x)
 
 loss(x)= Flux.mse(model(x), x[1:outs1])
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1d, en_layer2d, de_layer1d)), zip(norm_seed_data3), NADAM())
+lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1)), zip(norm_seed_data3), NADAM())
 
 # This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
