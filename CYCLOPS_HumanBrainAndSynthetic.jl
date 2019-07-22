@@ -76,14 +76,14 @@ from the CSV it is automatically rounded after a certain number of decimal point
 #= This extracts the genes from the dataset that were felt to have a high likelyhood to be cycling - and also had a reasonable coefficient of variation in this data sets =#
 seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(alldata_data, homologue_symbol_list, alldata_symbols, Seed_MaxCV, Seed_MinCV, Seed_MinMean, Seed_Blunt)
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
-in_out_dims = size(seed_data1, 1)
-batchsize_1 = size(seed_data1, 2)
+outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
+
+batchsize_1 = size(norm_seed_data1, 2)
 halfones = ones(trunc(Int, (batchsize_1 / 2)))
 halfzeros = zeros(trunc(Int, (batchsize_1 / 2)))
-seed_data2 = vcat(seed_data1, vcat(halfones, halfzeros)', vcat(halfzeros, halfones)')
-in_out_dims_oh = size(seed_data2, 1)
-seed_data3 = mapslices(x -> [x], seed_data2, dims=1)[:]
-#outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
+norm_seed_data2 = vcat(norm_seed_data1, vcat(halfones, halfzeros)', vcat(halfzeros, halfones)')
+outs2 = size(norm_seed_data2, 1)
+norm_seed_data3 = mapslices(x -> [x], norm_seed_data2, dims=1)[:]
 
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
@@ -97,10 +97,38 @@ lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck laye
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
     x./sqrt(sum(x .* x))
-  end
+end
 
-model = Chain(Dense(in_out_dims_oh, in_out_dims), Dense(in_out_dims, 2), circ, Dense(2, in_out_dims), Dense(in_out_dims, in_out_dims_oh)) #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
+outs2 = 7
+outs1 = 5
 
+en_layer1d = Dense(outs2, outs1)
+en_layer2d = Dense(outs1, 2)
+de_layer1d = Dense(2, outs1)
+
+a = zeros(7, 2)
+a[6, 1] = 1
+a[7, 2] = 1
+skiplayer(x) = transpose(a)*x
+
+model = Chain(x -> cat(Chain(en_layer1d, en_layer2d, circ, de_layer1d)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
+#=
+en_layer1h = CYCLOPS_FluxAutoEncoderModule.SkipDense(7, 2)
+
+
+
+en_layer1 = x -> vcat(en_layer1d(x), en_layer1h(Tracker.data(x[(outs1 + 1):end]))
+
+en_layer2d = Dense(outs1, 2)
+en_layer2h = CYCLOPS_FluxAutoEncoderModule.SkipDense(2, 2)
+en_layer2 = x -> vcat(en_layer2d(x), en_layer2h(Tracker.data(x[(outs1 + 1):end]))
+
+c_layer = x -> vcat(circ(x), )
+de_layer1d = Dense(2, outs1)
+de_layer2d = Dense(outs1, outs2)
+model = Chain(en_layer1d, en_layer2d, circ, de_layer1d, de_layer2d)
+#CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
+=#
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
 
@@ -109,21 +137,29 @@ Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
-function loss(x)
-  y = x .* vcat(ones(in_out_dims), zeros(in_out_dims_oh - in_out_dims))
+loss(x)= Flux.mse(model(x), x[1:outs1])
 
-  Flux.mse(model(y), y)
-end
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 1000 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(seed_data3), Descent(0.01))
+lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1d, en_layer2d, de_layer1d)), zip(norm_seed_data3), NADAM())
 
 #= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
-plot(lossrecord[1:end])
+plot(lossrecord[10:200])
 gcf()
 =#
-# this is going to not work
-estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(seed_data1, model, n_circs)
+
+#estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, model, n_circs, 3)
+
+points = size(norm_seed_data2, 2)
+phases = zeros(points)
+model_ph = Chain(en_layer1d, en_layer2d, circ)
+for n in 1:points
+  arr = model_ph(norm_seed_data2[:, n])
+  phases[n] = Tracker.data(atan(arr[2], arr[1]))
+end
+estimated_phaselist = phases
+
+
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
 estimated_phaselist1 = estimated_phaselist[timestamped_samples]

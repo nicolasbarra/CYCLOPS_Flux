@@ -3,7 +3,7 @@ module CYCLOPS_FluxAutoEncoderModule
 #= This module provides a function that creates a balanced autoencoder using Flux. Specifically, this function creates a circular node autoencoder where it is possible to specificy the number of circular nodes and linear nodes in the bottleneck layer in addition to the input (and thus also output since this is an balanced autoencoder) dimensions. It then returns a model that reflects these inputs that has been created using Flux's Chain function. The bottleneck layer is the concatenation of the specified number of circular and/or linear layers. =#
 
 import Flux: Dense, Chain
-import Flux.Tracker: data
+import Flux.Tracker: data, param
 
 export makeautoencoder_naive
 # TODO: Change exports when makeautoencoder is fixed.
@@ -130,7 +130,7 @@ function makeautoencoder_naive(in_out_dim::Integer, n_circs::Integer, lin::Bool,
       x./sqrt(sum(x .* x))
     end
     if n_circs == 0
-        encodetobottleneck = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+        encodetobottleneck = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, identity))
     elseif lin == false
         for i in 1:n_circs
             @eval $(Symbol("encoderbottle_$i")) = Chain(Dense($in_out_dim, 2), $circ)
@@ -149,7 +149,7 @@ function makeautoencoder_naive(in_out_dim::Integer, n_circs::Integer, lin::Bool,
         for i in 1:n_circs
             @eval $(Symbol("encoderbottle_$i")) = Chain(Dense($in_out_dim, 2), $circ)
         end
-        encoderbottle_lin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, x -> x))
+        encoderbottle_lin = Chain(Dense(in_out_dim, lin_dim), Dense(lin_dim, lin_dim, identity))
         modelmakerstring = "y -> vcat(u, encoderbottle_lin(y))"
         u = "encoderbottle_1(y)"
         if n_circs > 1
@@ -218,18 +218,51 @@ function makeautoencoder_string(in_out_dim::Integer, n_circs::Integer, lin::Bool
 end
 =#
 # extracts the phase angles from the model for analysis
-function extractphase(data_matrix, model, n_circs::Integer)
+function extractphase(data_matrix, model, n_circs::Integer, pos_bottlenecklayer::Integer)
     points = size(data_matrix, 2)
     phases = zeros(n_circs, points)
     base = 0
     for circ in 1:n_circs
         for n in 1:points
-            phases[circ, n] = data(atan(model[1](data_matrix[:, n])[2 + base], model[1](data_matrix[:, n])[1 + base]))
+            phases[circ, n] = data(atan(model[1:pos_bottlenecklayer](data_matrix[:, n])[2 + base], model[1:pos_bottlenecklayer](data_matrix[:, n])[1 + base]))
         end
         base += 2
     end
 
     phases
 end
+
+
+struct SkipDense{F,S,T}
+  W::S
+  b::T
+  σ::F
+end
+
+SkipDense(W, b) = SkipDense(W, b, identity)
+
+function SkipDense(in::Integer, out::Integer;
+               initW = ones, initb = zeros)
+  return SkipDense(param(initW(out, in)), param(initb(out)), identity)
+end
+
+function (a::SkipDense)(x::AbstractArray)
+  W, b, σ = a.W, a.b, a.σ
+  identity.(x)
+end
+
+function Base.show(io::IO, l::SkipDense)
+  print(io, "SkipDense(", size(l.W, 2), ", ", size(l.W, 1))
+  l.σ == identity || print(io, ", ", l.σ)
+  print(io, ")")
+end
+
+# Try to avoid hitting generic matmul in some simple cases
+# Base's matmul is so slow that it's worth the extra conversion to hit BLAS
+(a::SkipDense{<:Any,W})(x::AbstractArray{T}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
+  invoke(a, Tuple{AbstractArray}, x)
+
+(a::SkipDense{<:Any,W})(x::AbstractArray{<:Real}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
+  a(T.(x))
 
 end  # module CYCLOPS_FluxAutoEncoderModule
