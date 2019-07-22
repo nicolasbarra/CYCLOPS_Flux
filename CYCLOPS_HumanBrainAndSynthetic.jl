@@ -94,10 +94,9 @@ n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 
-
-
 en_layer1 = Dense(outs2, outs1)
 en_layer2 = Dense(outs1, 2)
+de_layer1 = Dense(2, outs1)
 
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
@@ -108,8 +107,6 @@ skipmatrix = zeros(outs2, n_batches)
 skipmatrix[6, 1] = 1
 skipmatrix[7, 2] = 1
 skiplayer(x) = skipmatrix'*x
-
-de_layer1 = Dense(2, outs1)
 
 model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
 
@@ -132,7 +129,7 @@ close()
 plot(lossrecord[10:200])
 gcf()
 
-extractmodel = Chain(en_layer1d, en_layer2d, circ)
+extractmodel = Chain(en_layer1, en_layer2, circ)
 
 estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, extractmodel, n_circs)
 
