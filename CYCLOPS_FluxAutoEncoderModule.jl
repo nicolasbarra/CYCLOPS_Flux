@@ -218,18 +218,8 @@ function makeautoencoder_string(in_out_dim::Integer, n_circs::Integer, lin::Bool
 end
 =#
 
-points = size(norm_seed_data2, 2)
-phases = zeros(points)
-model_ph = Chain(en_layer1d, en_layer2d, circ)
-for n in 1:points
-  arr = model_ph(norm_seed_data2[:, n])
-  phases[n] = Tracker.data(atan(arr[2], arr[1]))
-end
-estimated_phaselist = phases
-
-
 # extracts the phase angles from the model for analysis
-function extractphase(data_matrix, model, n_circs::Integer, pos_bottlenecklayer::Integer)
+function extractphase(data_matrix, model, n_circs::Integer)
     points = size(data_matrix, 2)
     phases = zeros(n_circs, points)
     base = 0
