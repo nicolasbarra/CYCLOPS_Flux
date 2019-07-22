@@ -217,6 +217,17 @@ function makeautoencoder_string(in_out_dim::Integer, n_circs::Integer, lin::Bool
     model
 end
 =#
+
+points = size(norm_seed_data2, 2)
+phases = zeros(points)
+model_ph = Chain(en_layer1d, en_layer2d, circ)
+for n in 1:points
+  arr = model_ph(norm_seed_data2[:, n])
+  phases[n] = Tracker.data(atan(arr[2], arr[1]))
+end
+estimated_phaselist = phases
+
+
 # extracts the phase angles from the model for analysis
 function extractphase(data_matrix, model, n_circs::Integer, pos_bottlenecklayer::Integer)
     points = size(data_matrix, 2)
@@ -224,45 +235,13 @@ function extractphase(data_matrix, model, n_circs::Integer, pos_bottlenecklayer:
     base = 0
     for circ in 1:n_circs
         for n in 1:points
-            phases[circ, n] = data(atan(model[1:pos_bottlenecklayer](data_matrix[:, n])[2 + base], model[1:pos_bottlenecklayer](data_matrix[:, n])[1 + base]))
+            pos = model(data_matrix[:, n])
+            phases[circ, n] = data(atan(pos[2 + base], pos[1 + base]))
         end
         base += 2
     end
 
     phases
 end
-
-
-struct SkipDense{F,S,T}
-  W::S
-  b::T
-  σ::F
-end
-
-SkipDense(W, b) = SkipDense(W, b, identity)
-
-function SkipDense(in::Integer, out::Integer;
-               initW = ones, initb = zeros)
-  return SkipDense(param(initW(out, in)), param(initb(out)), identity)
-end
-
-function (a::SkipDense)(x::AbstractArray)
-  W, b, σ = a.W, a.b, a.σ
-  identity.(x)
-end
-
-function Base.show(io::IO, l::SkipDense)
-  print(io, "SkipDense(", size(l.W, 2), ", ", size(l.W, 1))
-  l.σ == identity || print(io, ", ", l.σ)
-  print(io, ")")
-end
-
-# Try to avoid hitting generic matmul in some simple cases
-# Base's matmul is so slow that it's worth the extra conversion to hit BLAS
-(a::SkipDense{<:Any,W})(x::AbstractArray{T}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
-  invoke(a, Tuple{AbstractArray}, x)
-
-(a::SkipDense{<:Any,W})(x::AbstractArray{<:Real}) where {T <: Union{Float32,Float64}, W <: AbstractArray{T}} =
-  a(T.(x))
 
 end  # module CYCLOPS_FluxAutoEncoderModule
