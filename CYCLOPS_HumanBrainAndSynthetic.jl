@@ -99,9 +99,6 @@ function circ(x)
     x./sqrt(sum(x .* x))
 end
 
-outs2 = 7
-outs1 = 5
-
 en_layer1d = Dense(outs2, outs1)
 en_layer2d = Dense(outs1, 2)
 de_layer1d = Dense(2, outs1)
@@ -129,6 +126,7 @@ de_layer2d = Dense(outs1, outs2)
 model = Chain(en_layer1d, en_layer2d, circ, de_layer1d, de_layer2d)
 #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 =#
+
 #=
 # The below is where the gradient would be plugged in for us to use a custom gradient. Specifically, it would be everything that comes after the ->.
 
@@ -139,26 +137,16 @@ Tracker.@grad function circ(x)
 
 loss(x)= Flux.mse(model(x), x[1:outs1])
 
-
 lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1d, en_layer2d, de_layer1d)), zip(norm_seed_data3), NADAM())
 
-#= This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
+# This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 close()
 plot(lossrecord[10:200])
 gcf()
-=#
 
-#estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, model, n_circs, 3)
+extractmodel = Chain(en_layer1d, en_layer2d, circ)
 
-points = size(norm_seed_data2, 2)
-phases = zeros(points)
-model_ph = Chain(en_layer1d, en_layer2d, circ)
-for n in 1:points
-  arr = model_ph(norm_seed_data2[:, n])
-  phases[n] = Tracker.data(atan(arr[2], arr[1]))
-end
-estimated_phaselist = phases
-
+estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, extractmodel, n_circs)
 
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
@@ -168,7 +156,7 @@ shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselis
 
 
 # This code replicates the first figure in the paper.
-
+close()
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
 title("Eigengenes Encoded by Single Phase")
 ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
@@ -183,7 +171,7 @@ suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
 
 
-#= The below prints to the console the relevent error statistics using the true times that we know.
+# The below prints to the console the relevent error statistics using the true times that we know.
 errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
 hrerrors = (12/pi) * abs.(errors)
 println("Error from true times: ")
@@ -191,4 +179,3 @@ println(string("Mean: ", mean(hrerrors)))
 println(string("Median: ", median(hrerrors)))
 println(string("Standard Deviation: ", sqrt(var(hrerrors))))
 println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
-=#
