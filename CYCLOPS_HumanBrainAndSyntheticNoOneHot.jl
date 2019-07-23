@@ -43,7 +43,7 @@ Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
 fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_r50.csv")
+CSV.read("Annotated_Unlogged_BA11Data_r10_v1.csv")
 deletecols!(fullnonseed_data_syn, [2, 3])
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
@@ -78,37 +78,24 @@ seed_symbols1, seed_data1 = CYCLOPS_SeedModule.getseed_homologuesymbol_brain(all
 seed_data1 = CYCLOPS_SeedModule.dispersion!(seed_data1)
 outs1, norm_seed_data1 = CYCLOPS_PrePostProcessModule.getEigengenes(seed_data1, Frac_Var, DFrac_Var, 30)
 
-n_batches = 2
-batchsize_1 = size(norm_seed_data1, 2)
-halfones = ones(trunc(Int, (batchsize_1 / 2)))
-halfzeros = zeros(trunc(Int, (batchsize_1 / 2)))
-norm_seed_data2 = vcat(norm_seed_data1, vcat(halfones, halfzeros)', vcat(halfzeros, halfones)')
-outs2 = size(norm_seed_data2, 1)
-
 #= Data passed into Flux models must be in the form of an array of arrays where both the
 inner and outer arrays are one dimensional. This makes the array into an array of arrays. =#
-norm_seed_data3 = mapslices(x -> [x], norm_seed_data2, dims=1)[:]
+norm_seed_data2 = mapslices(x -> [x], norm_seed_data1, dims=1)[:]
 
 #= This example creates a "balanced autoencoder" where the eigengenes ~ principle components are encoded by a single phase angle =#
 n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 
-en_layer1 = Dense(outs2, outs1)
-en_layer2 = Dense(outs1, 2)
-de_layer1 = Dense(2, outs1)
+en_layer = Dense(outs1, 2)
+de_layer = Dense(2, outs1)
 
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
     x./sqrt(sum(x .* x))
 end
 
-skipmatrix = zeros(outs2, n_batches)
-skipmatrix[6, 1] = 1
-skipmatrix[7, 2] = 1
-skiplayer(x) = skipmatrix'*x
-
-model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
+model = Chain(en_layer, circ, de_layer)
 
 #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 
@@ -120,18 +107,18 @@ Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
-loss(x)= Flux.mse(model(x), x[1:outs1])
+loss(x)= Flux.mse(model(x), x)
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1)), zip(norm_seed_data3), NADAM())
+lossrecord = CYCLOPS_TrainingModule.@myepochs 1000 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model), zip(norm_seed_data2), Momentum())
 
 # This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
-close()
+#= close()
 plot(lossrecord[10:200])
-gcf()
+gcf() =#
 
-extractmodel = Chain(en_layer1, en_layer2, circ)
+extractmodel = Chain(en_layer, circ)
 
-estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, extractmodel, n_circs)
+estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data1, extractmodel, n_circs)
 
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
 
@@ -141,7 +128,7 @@ shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselis
 
 
 # This code replicates the first figure in the paper.
-close()
+#close()
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
 title("Eigengenes Encoded by Single Phase")
 ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
@@ -154,6 +141,7 @@ xticks(xlabp, xlabs)
 yticks(ylabp, ylabs)
 suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
+
 
 
 # The below prints to the console the relevent error statistics using the true times that we know.

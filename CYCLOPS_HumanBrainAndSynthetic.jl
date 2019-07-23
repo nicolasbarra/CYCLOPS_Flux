@@ -43,7 +43,7 @@ Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
 fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_r50.csv")
+CSV.read("Annotated_Unlogged_BA11Data_r10_v1.csv")
 deletecols!(fullnonseed_data_syn, [2, 3])
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
@@ -122,12 +122,12 @@ Tracker.@grad function circ(x)
 
 loss(x)= Flux.mse(model(x), x[1:outs1])
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1)), zip(norm_seed_data3), NADAM())
+lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1)), zip(norm_seed_data3), Momentum())
 
 # This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
-close()
+#=close()
 plot(lossrecord[10:200])
-gcf()
+gcf()=#
 
 extractmodel = Chain(en_layer1, en_layer2, circ)
 
@@ -141,7 +141,7 @@ shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselis
 
 
 # This code replicates the first figure in the paper.
-close()
+#close()
 scatter(truetimes, shiftephaselist, alpha=.75, s=14)
 title("Eigengenes Encoded by Single Phase")
 ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
@@ -164,3 +164,5 @@ println(string("Mean: ", mean(hrerrors)))
 println(string("Median: ", median(hrerrors)))
 println(string("Standard Deviation: ", sqrt(var(hrerrors))))
 println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
+
+#TODO FIX MAKE FLOAT
