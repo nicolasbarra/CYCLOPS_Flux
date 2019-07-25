@@ -43,8 +43,8 @@ Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
 fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_r10_v1.csv")
-deletecols!(fullnonseed_data_syn, [2, 3])
+CSV.read("Annotated_Unlogged_BA11Data_r10_v2.csv")
+select!(fullnonseed_data_syn, Not([2, 3]))
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
 alldata_symbols = fullnonseed_data_joined[3:end, 2]
