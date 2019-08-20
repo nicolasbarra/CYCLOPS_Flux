@@ -28,8 +28,6 @@ function makefloat!(ar::Array{Any}) # convert to Array{Any} first, using convert
         end
     end
     ar = convert(Array{Float64, 2}, ar)
-
-    ar
 end
 
 function makefloat!(df::DataFrame) # will convert to Array{Float} first
@@ -42,8 +40,6 @@ function makefloat!(df::DataFrame) # will convert to Array{Float} first
         end
     end
     ar = convert(Array{Float64, 2}, ar)
-
-    ar
 end
 =#
 
