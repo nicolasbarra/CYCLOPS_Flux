@@ -42,9 +42,12 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
-fullnonseed_data_syn =
-CSV.read("Annotated_Unlogged_BA11Data_r15_v1.csv")
-select!(fullnonseed_data_syn, Not([2, 3]))
+fullnonseed_data_syn = CSV.read("Annotated_Unlogged_BA11Data_r15_v1.csv") # the Not function does not appear to work anymore. To fix this I just created a logical vector in order to select all columns except 2 and 3
+B = trues(size(fullnonseed_data_syn, 2))
+B[2] = false
+B[3] = false
+fullnonseed_data_syn = fullnonseed_data_syn[B]
+# select!(fullnonseed_data_syn, Not([2, 3]))
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
 alldata_symbols = fullnonseed_data_joined[3:end, 2]
@@ -54,8 +57,10 @@ alldata_times = fullnonseed_data_joined[2, 4:end]
 alldata_samples = String.(names(fullnonseed_data_joined))[4:end]
 
 alldata_data = fullnonseed_data_joined[3:end, 4:end]
-CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
-alldata_data = convert(Matrix, alldata_data)
+# CYCLOPS_PrePostProcessModule.makefloat!(alldata_data) # makefloat! function no longer works.
+# alldata_data = convert(Matrix, alldata_data)
+alldata_data = makefloat!(alldata_data)
+#alldata_data = Array{Float64,2}(alldata_data)
 
 n_samples = length(alldata_times)
 
@@ -68,7 +73,7 @@ truetimes = mod.(Array{Float64}(alldata_times[timestamped_samples]), 24)
 n_probes = length(alldata_probes)
 cutrank = n_probes - MaxSeeds
 
-Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank]  #= Note that this number
+Seed_MinMean = (sort(vec(mean(alldata_data, dims = 2))))[cutrank] #= Note that this number
 is slightly different in new version versus old (42.88460199564358 here versus
 42.88460199555892 in the old file). This is due to the fact that when the data is imported
 from the CSV it is automatically rounded after a certain number of decimal points. =#
@@ -97,6 +102,7 @@ lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck laye
 en_layer1 = Dense(outs2, outs1)
 en_layer2 = Dense(outs1, 2)
 de_layer1 = Dense(2, outs1)
+de_layer2 = Dense(outs2, outs1)
 
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
@@ -108,7 +114,7 @@ skipmatrix[6, 1] = 1
 skipmatrix[7, 2] = 1
 skiplayer(x) = skipmatrix'*x
 
-model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), Dense(outs2, outs1))
+model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), de_layer2)
 
 #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 
@@ -122,7 +128,7 @@ Tracker.@grad function circ(x)
 
 loss(x)= Flux.mse(model(x), x[1:outs1])
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 744 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1)), zip(norm_seed_data3), Momentum())
+lossrecord = CYCLOPS_TrainingModule.@myepochs 750 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1, de_layer2)), zip(norm_seed_data3), Momentum())
 
 # This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 #=close()
