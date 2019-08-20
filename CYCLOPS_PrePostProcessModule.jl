@@ -12,11 +12,40 @@ export makefloat!, getEigengenes, get_N_Eigengenes, PCA_transform_seed_data, rep
 #= make all the columns of a DataFrame of type Float64, not String, since they are Numbers =#
 function makefloat!(df)
     for col in 1:size(df)[2]
-        if typeof(df[:, col]) == Array{String,1}
+        if typeof(df[:, col]) == Array{String,1} # used to be a an Array{String,1}, now is a WeakRefStrings.StringArray{String,1}. However, a single index is still a String
             df[:, col] = map(x -> tryparse(Float64, x), df[:, col])
         end
     end
 end
+
+#= Possible new makefloat! function
+function makefloat!(ar::Array{Any}) # convert to Array{Any} first, using convert{Matrix, df}.
+    for col in 1:size(ar)[2]
+        for row in 1:size(ar)[1]
+            if typeof(ar[row,col]) == String
+                ar[row, col] = parse(Float64, ar[row,col])
+            end
+        end
+    end
+    ar = convert(Array{Float64, 2}, ar)
+
+    ar
+end
+
+function makefloat!(df::DataFrame) # will convert to Array{Float} first
+    ar = convert(Matrix, df)
+    for col in 1:size(ar)[2]
+        for row in 1:size(ar)[1]
+            if typeof(ar[row,col]) == String
+                ar[row, col] = parse(Float64, ar[row,col])
+            end
+        end
+    end
+    ar = convert(Array{Float64, 2}, ar)
+
+    ar
+end
+=#
 
 function getEigengenes(numeric_data::Array{Float64, 2}, fraction_var::Number, dfrac_var::Number, maxeig::Number)
     svd_obj = svd(numeric_data)
