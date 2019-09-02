@@ -59,7 +59,7 @@ alldata_samples = String.(names(fullnonseed_data_joined))[4:end]
 alldata_data = fullnonseed_data_joined[3:end, 4:end]
 # CYCLOPS_PrePostProcessModule.makefloat!(alldata_data) # makefloat! function no longer works.
 # alldata_data = convert(Matrix, alldata_data)
-alldata_data = makefloat!(alldata_data)
+alldata_data = CYCLOPS_PrePostProcessModule.makefloat!(alldata_data)
 #alldata_data = Array{Float64,2}(alldata_data)
 
 n_samples = length(alldata_times)
@@ -170,5 +170,3 @@ println(string("Mean: ", mean(hrerrors)))
 println(string("Median: ", median(hrerrors)))
 println(string("Standard Deviation: ", sqrt(var(hrerrors))))
 println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
-
-#TODO FIX MAKE FLOAT
