@@ -42,12 +42,15 @@ MaxSeeds = 10000
 Random.seed!(12345)
 
 fullnonseed_data = CSV.read("Annotated_Unlogged_BA11Data.csv")
-fullnonseed_data_syn = CSV.read("Annotated_Unlogged_BA11Data_r15_v1.csv") # the Not function does not appear to work anymore. To fix this I just created a logical vector in order to select all columns except 2 and 3
+fullnonseed_data_syn = fullnonseed_data
+# fullnonseed_data_syn = CSV.read("Annotated_Unlogged_BA11Data_r15_v1.csv")
+cyclinggenes = 2 .+ findall(in(homologue_symbol_list), fullnonseed_data_syn[3:end,2])
 B = trues(size(fullnonseed_data_syn, 2))
 B[2] = false
 B[3] = false
 fullnonseed_data_syn = fullnonseed_data_syn[B]
-# select!(fullnonseed_data_syn, Not([2, 3]))
+fullnonseed_data_syn[cyclingenes] = fullnonseed_data_syn[cyclinggenes,2:end]
+
 fullnonseed_data_joined = join(fullnonseed_data, fullnonseed_data_syn, on = :Column1, makeunique = true)
 alldata_probes = fullnonseed_data_joined[3:end, 1]
 alldata_symbols = fullnonseed_data_joined[3:end, 2]
@@ -135,6 +138,7 @@ struct CYCLOPS
 end
 
 CYCLOPS(in::Integer, out::Integer) = CYCLOPS(param(randn(out,(in-out))), param(randn(out,(in-out))), Dense(out,2), circ, Dense(2,out), param(randn(out,(in-out))), param(randn(out,(in-out))), in, out)
+
 function (m::CYCLOPS)(x)
     SparseOut = (x[1:m.o].*(m.S1*x[m.i-1:end]) + m.b1*x[m.i-1:end])
     DenseOut = m.L1(SparseOut)
@@ -170,9 +174,9 @@ lossrecord = CYCLOPS_TrainingModule.@myepochs 750 CYCLOPS_TrainingModule.mytrain
 plot(lossrecord[10:200])
 gcf()=#
 m = model
-nonLin(x) = (x[1:m.o].*(m.S1*x[m.i-1:end]) + m.b1*x[m.i-1:end])
+sparse(x) = (x[1:m.o].*(m.S1*x[m.i-1:end]) + m.b1*x[m.i-1:end])
 Lin(x) = m.L1(x)
-extractmodel = Chain(nonLin, Lin, circ)
+extractmodel = Chain(sparse, Lin, circ)
 extractOldmodel = Chain(en_layer1, en_layer2, circ)
 
 #NEW
