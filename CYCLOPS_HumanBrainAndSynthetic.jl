@@ -99,22 +99,51 @@ n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 
+
 en_layer1 = Dense(outs2, outs1)
 en_layer2 = Dense(outs1, 2)
 de_layer1 = Dense(2, outs1)
 de_layer2 = Dense(outs2, outs1)
+
 
 function circ(x)
     length(x) == 2 || throw(ArgumentError(string("Invalid length of input that should be 2 but is ", length(x))))
     x./sqrt(sum(x .* x))
 end
 
+
 skipmatrix = zeros(outs2, n_batches)
 skipmatrix[6, 1] = 1
 skipmatrix[7, 2] = 1
 skiplayer(x) = skipmatrix'*x
 
-model = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), de_layer2)
+
+# PREVIOUS MODEL
+Oldmodel = Chain(x -> cat(Chain(en_layer1, en_layer2, circ, de_layer1)(x), skiplayer(x); dims = 1), de_layer2)
+
+# NEW MODEL
+struct CYCLOPS
+    S1
+    b1
+    L1
+    C
+    L2
+    S2
+    b2
+    i
+    o
+end
+
+CYCLOPS(in::Integer, out::Integer) = CYCLOPS(param(randn(out,(in-out))), param(randn(out,(in-out))), Dense(out,2), circ, Dense(2,out), param(randn(out,(in-out))), param(randn(out,(in-out))), in, out)
+function (m::CYCLOPS)(x)
+    SparseOut = (x[1:m.o].*(m.S1*x[m.i-1:end]) + m.b1*x[m.i-1:end])
+    DenseOut = m.L1(SparseOut)
+    CircOut = m.C(DenseOut)
+    Dense2Out = m.L2(CircOut)
+    SparseOut = (Dense2Out.*(m.S2*x[m.i-1:end]) + m.b2*x[m.i-1:end])
+end
+
+model = CYCLOPS(outs2, outs1)
 
 #CYCLOPS_FluxAutoEncoderModule.makeautoencoder_naive(outs1, n_circs, lin, lin_dim)
 
@@ -126,25 +155,56 @@ Tracker.@grad function circ(x)
     return circ(Tracker.data(x)), Δ -> (Δ
 =#
 
+#OLD loss
+Oldloss(x) = Flux.mse(Oldmodel(x), x[1:outs1])
+#NEW loss
 loss(x)= Flux.mse(model(x), x[1:outs1])
 
-lossrecord = CYCLOPS_TrainingModule.@myepochs 750 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params((model, en_layer1, en_layer2, de_layer1, de_layer2)), zip(norm_seed_data3), Momentum())
+#OLD loss record
+Oldlossrecord = CYCLOPS_TrainingModule.@myepochs 750 CYCLOPS_TrainingModule.mytrain!(Oldloss, Flux.params((Oldmodel, en_layer1, en_layer2, de_layer1, de_layer2)), zip(norm_seed_data3), Momentum())
+#NEW loss record
+lossrecord = CYCLOPS_TrainingModule.@myepochs 750 CYCLOPS_TrainingModule.mytrain!(loss, Flux.params(model, model.S1, model.b1, model.L1, model.L2, model.S2, model.b2), zip(norm_seed_data3), Momentum())
 
 # This code can be uncommented or commented in order to toggle the graphing of the loss over the epochs of training that have been done and you can change the parameters of the array to focus in on some component of the graph.
 #=close()
 plot(lossrecord[10:200])
 gcf()=#
+m = model
+nonLin(x) = (x[1:m.o].*(m.S1*x[m.i-1:end]) + m.b1*x[m.i-1:end])
+Lin(x) = m.L1(x)
+extractmodel = Chain(nonLin, Lin, circ)
+extractOldmodel = Chain(en_layer1, en_layer2, circ)
 
-extractmodel = Chain(en_layer1, en_layer2, circ)
-
+#NEW
 estimated_phaselist = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, extractmodel, n_circs)
+#OLD
+estimated_phaselistOld = CYCLOPS_FluxAutoEncoderModule.extractphase(norm_seed_data2, extractOldmodel, n_circs)
 
+#NEW
 estimated_phaselist = mod.(estimated_phaselist .+ 2*pi, 2*pi)
+#OLD
+estimated_phaselistOld = mod.(estimated_phaselistOld .+ 2*pi, 2*pi)
 
+#NEW
 estimated_phaselist1 = estimated_phaselist[timestamped_samples]
+#OLD
+estimated_phaselist1Old = estimated_phaselistOld[timestamped_samples]
 
+#NEW
 shiftephaselist = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1, truetimes, "hours")
+#OLD
+shiftephaselistOld = CYCLOPS_PrePostProcessModule.best_shift_cos(estimated_phaselist1Old, truetimes, "hours")
 
+# The below prints to the console the relevent error statistics using the true times that we know.
+errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
+hrerrors = (12/pi) * abs.(errors)
+Olderrors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselistOld)
+Oldhrerrors = (12/pi) * abs.(Olderrors)
+println("Error from true times for New vs Old Model: ")
+println(string("Mean: ", mean(hrerrors)), " vs. ", mean(Oldhrerrors))
+println(string("Median: ", median(hrerrors)), " vs. ", mean(Oldhrerrors))
+println(string("Standard Deviation: ", sqrt(var(hrerrors)), " vs. ", sqrt(var(Oldhrerrors))))
+println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))], " vs. ", sort(Oldhrerrors)[Integer(round(.75 * length(Oldhrerrors)))]))
 
 # This code replicates the first figure in the paper.
 #close()
@@ -161,8 +221,20 @@ yticks(ylabp, ylabs)
 suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
 gcf()
 
+scatter(truetimes, shiftephaselistOld, alpha=.75, s=14)
+title("Eigengenes Encoded by Single Phase")
+ylabp=[0, pi/2,pi, 3*pi/2, 2*pi]
+ylabs=[0, "", "π", "", "2π"]
+xlabp=[0, 6, 12, 18, 24]
+xlabs=["0", "6", "12", "18", "24"]
+ylabel("CYCLOPS Phase (radians)", fontsize=14)
+xlabel("Hour of Death", fontsize=14)
+xticks(xlabp, xlabs)
+yticks(ylabp, ylabs)
+suptitle("CYCLOPS Phase Prediction: Human Frontal Cortex", fontsize=18)
+gcf()
 
-# The below prints to the console the relevent error statistics using the true times that we know.
+#=
 errors = CYCLOPS_CircularStatsModule.circularerrorlist(2*pi * truetimes / 24, shiftephaselist)
 hrerrors = (12/pi) * abs.(errors)
 println("Error from true times: ")
@@ -170,3 +242,4 @@ println(string("Mean: ", mean(hrerrors)))
 println(string("Median: ", median(hrerrors)))
 println(string("Standard Deviation: ", sqrt(var(hrerrors))))
 println(string("75th percentile: ", sort(hrerrors)[Integer(round(.75 * length(hrerrors)))]))
+=#
