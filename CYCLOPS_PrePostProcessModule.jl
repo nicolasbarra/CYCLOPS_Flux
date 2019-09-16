@@ -25,11 +25,22 @@ function makefloat!(ar::Array{Any}) # convert to Array{Any} first, using convert
     for col in 1:size(ar)[2]
         for row in 1:size(ar)[1]
             if typeof(ar[row,col]) == String
-                ar[row, col] = parse(Float64, ar[row,col])
+                ar[row, col] = parse(Float32, ar[row,col])
             end
         end
     end
-    ar = convert(Array{Float64, 2}, ar)
+    ar = convert(Array{Float32, 2}, ar)
+end
+
+function makefloat!(ar::Array{Any,1}, dim::Integer)
+    for col in 1:size(ar)[1]
+        if typeof(ar[col]) == String
+            ar[i] = parse(Float32, ar[i])
+        end
+        if dim == 2
+            convert(Array{Float32,2}, ar')
+        end
+    end
 end
 
 function makefloat!(df::DataFrame) # will convert to Array{Float} first
@@ -37,11 +48,11 @@ function makefloat!(df::DataFrame) # will convert to Array{Float} first
     for col in 1:size(ar)[2]
         for row in 1:size(ar)[1]
             if typeof(ar[row,col]) == String
-                ar[row, col] = parse(Float64, ar[row,col])
+                ar[row, col] = parse(Float32, ar[row,col])
             end
         end
     end
-    ar = convert(Array{Float64, 2}, ar)
+    ar = convert(Array{Float32, 2}, ar)
 end
 
 
@@ -54,7 +65,7 @@ function getEigengenes(numeric_data::Array{Float64, 2}, fraction_var::Number, df
     ReductionDim = min(ReductionDim1, ReductionDim2, maxeig)
     Transform = svd_obj.V[:, 1:ReductionDim]'
 
-    ReductionDim, 10*Transform
+    ReductionDim, Array{Float32}(10*Transform)
 end
 
 function get_N_Eigengenes(numeric_data::Array{Float64, 2}, nkeep::Integer)
