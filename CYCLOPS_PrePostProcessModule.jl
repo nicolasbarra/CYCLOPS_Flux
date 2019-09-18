@@ -65,7 +65,7 @@ function getEigengenes(numeric_data::Array{Float64, 2}, fraction_var::Number, df
     ReductionDim = min(ReductionDim1, ReductionDim2, maxeig)
     Transform = svd_obj.V[:, 1:ReductionDim]'
 
-    ReductionDim, Array{Float32}(10*Transform)
+    ReductionDim, Array{Float32,2}(10*Transform)
 end
 
 function get_N_Eigengenes(numeric_data::Array{Float64, 2}, nkeep::Integer)
