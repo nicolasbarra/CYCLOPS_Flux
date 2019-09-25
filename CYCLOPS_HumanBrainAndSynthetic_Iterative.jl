@@ -101,6 +101,43 @@ function gencyclops(i::Int, o::Int, w::Real=1, l::Int=0, nc::Int=1)
     [cyclops(param(S1), param(b1), Dense(o,2+l), circ, Dense(2+l,o), param(S2), param(b2), i, o)]
 end
 
+function gencyclopsb(i::Int, o::Int, b::Array{<:Real}, l::Int=0, nc::Int=1)
+    i>(o+1) || throw(ArgumentError(string("INPUT DIMENSIONS (i) must be at least OUTPUT DIMENSIONS (o) + 2, but is OUTPUT DIMENSIONS (o) + ",i-o,".")))
+    !(l<0) || throw(ArgumentError(string("Number of linear layers (l) cannot be less than 0.")))
+    (o-l)>3 || @warn "Limited data reduction"
+    S1 = Array{Float32,2}(1 .+ 0.15 .* randn(o, i - o))
+    b1 = Array{Float32,2}(b[1] .+ 0.1 .* rand(o, i - o))
+    S2 = Array{Float32,2}(1 .+ 0.15 .* randn(o, i - o))
+    b2 = Array{Float32,2}(b[1] .+ 0.1 .* rand(o, i - o))
+    b1[1,2] = -S1[1,2]
+    S2[1,2] = -S2[1,2]
+    ms = fill(cyclops(param(S1), param(b1), Dense(o,2+l), circ, Dense(2+l,o), param(S2), param(b2), i, o), length(w), 1)
+    for ii in 2:length(w)
+        S1 = Array{Float32,2}(1 .+ 0.15 .* randn(o, i - o))
+        b1 = Array{Float32,2}(b[ii] .+ 0.1 .* rand(o, i - o))
+        S2 = Array{Float32,2}(1 .+ 0.15 .* randn(o, i - o))
+        b2 = Array{Float32,2}(b[ii] .+ 0.1 .* rand(o, i - o))
+        S1[1,2] = -S1[1,2]
+        S2[1,2] = -S2[1,2]
+        ms[ii] = cyclops(param(S1), param(b1), Dense(o,2+l), circ, Dense(2+l,o), param(S2), param(b2), i, o)
+    end
+
+    ms
+end
+
+function gencyclopsb(i::Int, o::Int, w::Real=1, l::Int=0, nc::Int=1)
+    i > (o+1) || throw(ArgumentError(string("Input dimensions must be at least output dimension + 2, but is only output dimension + ",i-o)))
+    !(l<0) || throw(ArgumentError(string("Number of linear layers (l) cannot be negative.")))
+    (o-l)>3 || @warn "Limited data reduction"
+    S1 = Array{Float32,2}(w .+ 0.15 .* randn(o, i - o))
+    b1 = Array{Float32,2}(1 .+ 0.1 .* rand(o, i - o))
+    S2 = Array{Float32,2}(w .+ 0.15 .* randn(o, i - o))
+    b2 = Array{Float32,2}(1 .+ 0.1 .* rand(o, i - o))
+    S1[1,2] = -S1[1,2]
+    S2[1,2] = -S2[1,2]
+    [cyclops(param(S1), param(b1), Dense(o,2+l), circ, Dense(2+l,o), param(S2), param(b2), i, o)]
+end
+
 function gensynthdata(ogdataframe::DataFrame, SF::Real, offset::Real=0.0)
     center = (1 + SF)/2 # mean is half way between 1 and SF
     stdev = (SF - 1)/(2*1.96) # stdev is such that 2 stdev lie between 1 and SF
@@ -157,11 +194,6 @@ function multimodeltrain(td, w=1, reps::Int=5, nc::Int=1)
     tms, ferrors
 end
 
-ogdata = "Annotated_Unlogged_BA11Data.csv"
-hsl = "Human_UbiquityCyclers.csv"
-
-ops = [Frac_Var, DFrac_Var, Seed_MinCV, Seed_MaxCV, Seed_Blunt, MaxSeeds]
-
 function gentrainingdata(ogdata::String, hsl::String, SF::Number, offset::Number, ops)
 
     # Gathering/generating data
@@ -215,6 +247,11 @@ n_circs = 1  # set the number of circular layers in bottleneck layer
 lin = false  # set the number of linear layers in bottleneck layer
 lin_dim = 1  # set the in&out dimensions of the linear layers in bottleneck layer
 
+
+ogdata = "Annotated_Unlogged_BA11Data.csv"
+hsl = "Human_UbiquityCyclers.csv"
+
+ops = [Frac_Var, DFrac_Var, Seed_MinCV, Seed_MaxCV, Seed_Blunt, MaxSeeds]
 SF = 2
 offset = 0.2
 td = gentrainingdata(ogdata, hsl, SF, offset, ops)
